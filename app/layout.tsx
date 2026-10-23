@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import { DemoProvider } from "@/components/DemoProvider";
 import "./globals.css";
 export const metadata: Metadata = {
-  title: "Mis espacios · Tus negocios y finanzas",
+  title: "Smart Solutions · Finanzas por voz e imagen",
   description:
-    "Tus negocios y tus finanzas, en un solo lugar. Demostración con datos de ejemplo.",
+    "Asistente de IA que registra por voz y foto las ventas y gastos de pequeños negocios y los convierte en un historial para acceder a crédito.",
 };
 export default function RootLayout({
   children,
@@ -17,12 +17,12 @@ export default function RootLayout({
         <DemoProvider>
           <header className="brand-bar">
             <span className="brand-symbol">
-              m<span>i</span>
+              s<span>s</span>
             </span>
             <span>
-              mis espacios
+              Smart Solutions
               <span className="brand-caption">
-                Cada negocio, una posibilidad.
+                Habla, toma una foto y ordena tu negocio.
               </span>
             </span>
             <span className="demo-badge">

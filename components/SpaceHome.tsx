@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useState } from "react";
+import { AiCaptureDialog } from "./AiCaptureDialog";
 import { useDemo } from "./DemoProvider";
 import { Icon } from "./Icon";
 import { MovementList } from "./MovementList";
@@ -8,7 +9,7 @@ import { MovementDialog, type CaptureMethod } from "./MovementDialog";
 import { PeriodTotals } from "./PeriodTotals";
 import { selectMovements } from "@/lib/finance";
 export function SpaceHome({ spaceId }: { spaceId: string }) {
-  const { spaces, movements } = useDemo();
+  const { spaces, movements, aiMode } = useDemo();
   const space = spaces.find((item) => item.id === spaceId);
   const [kind, setKind] = useState<"income" | "expense" | null>(
     space?.type === "personal" ? "expense" : null,
@@ -18,8 +19,8 @@ export function SpaceHome({ spaceId }: { spaceId: string }) {
   const recentMovements = selectMovements(movements, spaceId).slice(0, 5);
   const todayMovements = selectMovements(movements, spaceId, "today");
   function openCapture(method: CaptureMethod) {
-    if (!kind) {
-      setNotice("Primero elige venta o gasto.");
+    if (method === "text" && !kind) {
+      setNotice("Para escribir, primero elige venta o gasto.");
       return;
     }
     setNotice("");
@@ -84,11 +85,16 @@ export function SpaceHome({ spaceId }: { spaceId: string }) {
               </button>
             </div>
             <small>
-              {kind
-                ? "La IA prepara el registro; tú confirmas"
-                : "Elige venta o gasto y luego cómo registrarlo"}
+              Dicta varias ventas y gastos a la vez o fotografía tu boleta o
+              cuaderno. La IA prepara el registro; tú confirmas.
             </small>
-            <span className="simulation-label">Extracción simulada</span>
+            <span className={`simulation-label ${aiMode ?? ""}`}>
+              {aiMode === "ai"
+                ? "IA activa"
+                : aiMode === "demo"
+                  ? "IA en modo demostración"
+                  : "Comprobando IA…"}
+            </span>
           </div>
           <p role="status" className="status-message">
             {notice}
@@ -113,7 +119,20 @@ export function SpaceHome({ spaceId }: { spaceId: string }) {
           <p className="list-note">Pequeños registros. Grandes decisiones.</p>
         </section>
       </div>
-      {method && kind && (
+      {(method === "voice" || method === "image") && (
+        <AiCaptureDialog
+          space={space}
+          kindHint={kind}
+          method={method}
+          onClose={() => setMethod(null)}
+          onSaved={(count) =>
+            setNotice(
+              `${count} movimiento${count === 1 ? "" : "s"} registrado${count === 1 ? "" : "s"}.`,
+            )
+          }
+        />
+      )}
+      {method === "text" && kind && (
         <MovementDialog
           space={space}
           kind={kind}
@@ -121,9 +140,7 @@ export function SpaceHome({ spaceId }: { spaceId: string }) {
           onClose={() => setMethod(null)}
           onSaved={() =>
             setNotice(
-              kind === "income"
-                ? "Venta registrada en la demo."
-                : "Gasto registrado en la demo.",
+              kind === "income" ? "Venta registrada." : "Gasto registrado.",
             )
           }
         />

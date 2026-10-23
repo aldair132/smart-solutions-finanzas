@@ -157,7 +157,7 @@ export function Overview() {
         </aside>
       </div>
       <p className="demo-note">
-        Datos de ejemplo · Los cambios se reinician al recargar.
+        Datos de ejemplo · Tus cambios se guardan en este dispositivo.
       </p>
       {isAdding && (
         <Dialog

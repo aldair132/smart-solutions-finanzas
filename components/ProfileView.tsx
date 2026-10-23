@@ -153,13 +153,14 @@ export function ProfileView({ spaceId }: { spaceId: string }) {
             <div className="help-content">
               <h3>¿Cómo registro una venta o gasto?</h3>
               <p>
-                En Inicio elige el tipo y después Voz, Foto o Escribir. Revisa
-                los datos y confirma.
+                En Inicio toca Voz y dicta varias ventas y gastos a la vez, o
+                Foto para leer una boleta o tu cuaderno. La IA prepara los
+                registros y tú confirmas.
               </p>
               <h3>¿Se conservan mis cambios?</h3>
               <p>
-                Esta demostración guarda los cambios en memoria. Al recargar
-                vuelven los datos de ejemplo.
+                Sí, en este dispositivo. Al salir de la demo vuelven los datos
+                de ejemplo.
               </p>
               <p className="extraction-box">Canal de contacto pendiente.</p>
             </div>

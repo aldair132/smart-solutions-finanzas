@@ -1,17 +1,47 @@
 "use client";
-import { createContext, useContext, useState, type ReactNode } from "react";
-import { loadDemo, saveMovement, saveSpace, saveUser } from "@/lib/demoService";
-import type { DemoState, Movement } from "@/lib/types";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
+import { getAiMode } from "@/lib/aiService";
+import {
+  clearStoredDemo,
+  loadDemo,
+  loadStoredDemo,
+  saveMovement,
+  saveSpace,
+  saveUser,
+  storeDemo,
+} from "@/lib/demoService";
+import type { AiMode, DemoState, Movement } from "@/lib/types";
 
+type MovementInput = Omit<Movement, "id"> & { id?: string };
 type DemoContextValue = DemoState & {
+  aiMode: AiMode | null;
   updateSpace: (name: string, id?: string) => string;
-  updateMovement: (movement: Omit<Movement, "id"> & { id?: string }) => void;
+  updateMovement: (movement: MovementInput) => void;
+  addMovements: (movements: MovementInput[]) => void;
   updateUser: (name: string) => void;
   reset: () => void;
 };
 const DemoContext = createContext<DemoContextValue | null>(null);
 export function DemoProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState(loadDemo);
+  const [aiMode, setAiMode] = useState<AiMode | null>(null);
+  const hasRestoredRef = useRef(false);
+  useEffect(() => {
+    const storedState = loadStoredDemo();
+    hasRestoredRef.current = true;
+    if (storedState) queueMicrotask(() => setState(storedState));
+    getAiMode().then(setAiMode);
+  }, []);
+  useEffect(() => {
+    if (hasRestoredRef.current) storeDemo(state);
+  }, [state]);
   function updateSpace(name: string, id?: string) {
     const space = saveSpace(state.spaces, name, id);
     setState((current) => ({
@@ -22,13 +52,14 @@ export function DemoProvider({ children }: { children: ReactNode }) {
     }));
     return space.id;
   }
-  function updateMovement(input: Omit<Movement, "id"> & { id?: string }) {
-    const movement = saveMovement(input);
+  function addMovements(inputs: MovementInput[]) {
+    const movements = inputs.map(saveMovement);
+    const savedIds = new Set(movements.map((movement) => movement.id));
     setState((current) => ({
       ...current,
       movements: [
-        ...current.movements.filter((item) => item.id !== movement.id),
-        movement,
+        ...current.movements.filter((item) => !savedIds.has(item.id)),
+        ...movements,
       ],
     }));
   }
@@ -36,14 +67,20 @@ export function DemoProvider({ children }: { children: ReactNode }) {
     const user = saveUser(state.user, name);
     setState((current) => ({ ...current, user }));
   }
+  function reset() {
+    clearStoredDemo();
+    setState(loadDemo());
+  }
   return (
     <DemoContext.Provider
       value={{
         ...state,
+        aiMode,
         updateSpace,
-        updateMovement,
+        updateMovement: (movement) => addMovements([movement]),
+        addMovements,
         updateUser,
-        reset: () => setState(loadDemo()),
+        reset,
       }}
     >
       {children}

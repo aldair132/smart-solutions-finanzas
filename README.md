@@ -1,36 +1,52 @@
-# Mis espacios · Frontend de demostración
+# Smart Solutions · Finanzas por voz e imagen
 
-Aplicación Next.js con cuatro vistas basadas en la referencia visual y las guías de `docs/`.
+Asistente de IA que digitaliza por **voz** y **foto** las ventas y gastos de pequeños negocios informales, los ordena por espacio y los convierte en un **perfil para crédito** que el emprendedor puede presentar a una caja, cooperativa o microfinanciera.
 
 ## Ejecutar
 
 ```bash
 npm install
+cp .env.example .env.local   # opcional: agrega GEMINI_API_KEY o ANTHROPIC_API_KEY
 npm run dev
 ```
 
-Abrir http://localhost:3000. Verificaciones disponibles: `npm run lint` y `npm run build` (incluye TypeScript).
+Abrir http://localhost:3000. Verificaciones: `npm run lint` y `npm run build` (incluye TypeScript).
 
-## Rutas
+Sin clave de IA la app funciona en **modo demostración**: las extracciones y respuestas son ejemplos fijos y la interfaz lo indica («IA en modo demostración»).
 
-- `/`: espacios, resumen del día y creación de negocios.
-- `/espacios/[spaceId]`: registro de ventas/gastos y últimos cinco movimientos.
-- `/espacios/[spaceId]/movimientos?period=today|7d|month`: historial, edición y PDF local.
-- `/espacios/[spaceId]/perfil`: perfil común, configuración del espacio y salida de la demo.
-- `/demo`: pantalla de salida.
+## Desplegar en Vercel
 
-Espacios iniciales: `bodega`, `comida`, `personal`. Fecha demo fija: 23/10/2026, zona America/Lima, moneda PEN. La cuenta personal registra únicamente gastos. El estado es compartido durante la navegación y se reinicia al recargar o salir de la demo.
+1. Importar el repositorio en Vercel (framework Next.js, sin cambios de configuración).
+2. En *Settings → Environment Variables* agregar `GEMINI_API_KEY` (gratis en https://aistudio.google.com/apikey) o `ANTHROPIC_API_KEY`.
+3. Redesplegar. En Inicio la etiqueta debe decir «IA activa».
 
-## Organización e integración pendiente
+Usar un nombre de proyecto neutro: la URL no debe incluir nombres de personas, universidades ni países.
 
-- `lib/types.ts`: contratos propuestos del frontend.
-- `lib/mockData.ts`: fixtures y propuesta de extracción simulada.
-- `lib/demoService.ts`: puntos de sustitución marcados con TODO(BACKEND) y TODO(IA).
-- `components/DemoProvider.tsx`: estado compartido en memoria.
-- `lib/finance.ts`: importes en céntimos, filtros y formato por zona horaria.
-- `lib/exportMovementsPdf.ts`: PDF generado con jsPDF, usando solamente los movimientos filtrados.
-- `components/`: pantallas, formularios y elementos visuales reutilizados.
+## Qué hace
 
-No hay autenticación, almacenamiento remoto ni extracción IA real. Voz usa un ejemplo; Foto muestra el archivo local y una propuesta ficticia; Escribir permite registro manual. Todos requieren revisión y confirmación. Biometría está deshabilitada; soporte y documentos legales se identifican como pendientes. No se recopilan contraseñas.
+| Ruta | Función |
+| --- | --- |
+| `/` | Resumen de espacios (negocios y cuenta personal). |
+| `/espacios/[id]` | Registro por **Voz** (dictado es-PE; varias ventas y gastos en una frase), **Foto** (boleta, ticket o página de cuaderno) o **Escribir**. La IA propone borradores editables; nada se guarda sin confirmar. |
+| `/espacios/[id]/movimientos` | Historial por periodo, edición y PDF. |
+| `/espacios/[id]/credito` | Perfil para crédito de 90 días: ventas y resultado promedio, margen, constancia, estabilidad, tendencia, comprobantes y cuota referencial; puntaje de preparación 0–100, explicación con IA y **reporte PDF** para la entidad. |
+| `/espacios/[id]/perfil` | Perfil, configuración y salida de la demo. |
+| Botón «Pregúntale a Smart» | Chat financiero (texto o voz) que responde con los registros del usuario. |
 
-Los endpoints deben acordarse con backend. La futura API debe comprobar sesión y pertenencia de cada espacio, validar las escrituras y devolver errores explícitos. El PDF permanece en frontend.
+Datos de ejemplo: 90 días de historial generados de forma determinista (`lib/mockHistory.ts`) más los movimientos del 23/10/2026. Los cambios se guardan en `localStorage` del dispositivo; «Salir de la demo» los borra.
+
+## Arquitectura
+
+- `app/api/ai/extract` — voz (texto transcrito en el navegador) o imagen → `ExtractionResult` validado con zod. Importes inciertos llegan como `null`.
+- `app/api/ai/assistant` — chat (`task: "chat"`) y lectura del perfil (`task: "credit"`).
+- `app/api/ai/status` — indica si hay proveedor configurado.
+- `lib/server/aiProvider.ts` — salida estructurada con Claude (SDK oficial) o Gemini (REST). Las claves solo existen en servidor.
+- `lib/creditProfile.ts` — indicadores y puntaje, funciones puras y explicables (la IA explica, no calcula).
+- `lib/aiService.ts` — cliente de las rutas y compresión de fotos (máx. 1600 px).
+- `hooks/useSpeechRecognition.ts` — Web Speech API (Chrome/Edge/Android). En navegadores sin soporte se escribe el texto y la IA lo ordena igual.
+
+## Integraciones que siguen simuladas
+
+- Autenticación, base de datos y API del backend (`TODO(BACKEND)` en `lib/demoService.ts` y `lib/aiService.ts`).
+- Compartir el reporte con una entidad (hoy solo se descarga, con consentimiento implícito del usuario).
+- El puntaje es un indicador de preparación propio, no una evaluación crediticia.

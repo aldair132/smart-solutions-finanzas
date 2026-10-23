@@ -1,7 +1,8 @@
 "use client";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
+import { AssistantDialog } from "./AssistantDialog";
 import { useDemo } from "./DemoProvider";
 import { Icon, type IconName } from "./Icon";
 export function SpaceShell({
@@ -15,15 +16,16 @@ export function SpaceShell({
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const [isAssistantOpen, setIsAssistantOpen] = useState(false);
   const space = spaces.find((item) => item.id === spaceId);
-  const suffix = pathname.endsWith("/movimientos")
-    ? "/movimientos"
-    : pathname.endsWith("/perfil")
-      ? "/perfil"
-      : "";
+  const suffix =
+    ["/movimientos", "/credito", "/perfil"].find((item) =>
+      pathname.endsWith(item),
+    ) ?? "";
   const tabs: { label: string; suffix: string; icon: IconName }[] = [
     { label: "Inicio", suffix: "", icon: "home" },
     { label: "Movimientos", suffix: "/movimientos", icon: "receipt" },
+    { label: "Crédito", suffix: "/credito", icon: "chart" },
     { label: "Perfil", suffix: "/perfil", icon: "user" },
   ];
   if (!space)
@@ -69,8 +71,21 @@ export function SpaceShell({
       </div>
       {children}
       <p className="demo-note">
-        Datos de ejemplo · Los cambios se reinician al recargar.
+        Datos de ejemplo · Tus cambios se guardan en este dispositivo.
       </p>
+      <button
+        className="assistant-fab"
+        onClick={() => setIsAssistantOpen(true)}
+      >
+        <Icon name="help" />
+        <span>Pregúntale a Smart</span>
+      </button>
+      {isAssistantOpen && (
+        <AssistantDialog
+          spaceId={spaceId}
+          onClose={() => setIsAssistantOpen(false)}
+        />
+      )}
       <nav className="bottom-tabs" aria-label="Navegación del espacio">
         {tabs.map((tab) => (
           <Link

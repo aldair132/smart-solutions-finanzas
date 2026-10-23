@@ -1,7 +1,5 @@
 "use client";
-import Image from "next/image";
-import { useEffect, useState, type FormEvent } from "react";
-import { extractExample } from "@/lib/demoService";
+import { useState, type FormEvent } from "react";
 import { demoDate } from "@/lib/mockData";
 import { displayDate, displayTime, localDate, money } from "@/lib/finance";
 import type { Movement, Space } from "@/lib/types";
@@ -35,18 +33,8 @@ export function MovementDialog({
   );
   const [editing, setEditing] = useState(!movement);
   const [dirty, setDirty] = useState(false);
-  const [prepared, setPrepared] = useState(method === "text");
-  const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
-  const preview = useImagePreview(file);
-  function prepareExample() {
-    const draft = extractExample(space.id, kind);
-    setDescription(draft.description);
-    setAmount(String(draft.amountMinor / 100));
-    setPrepared(true);
-    setDirty(true);
-  }
   function handleSave(event: FormEvent<HTMLFormElement>) {
     const normalizedAmount = amount.replace(",", ".");
     event.preventDefault();
@@ -65,6 +53,7 @@ export function MovementDialog({
         description,
         occurredAt: `${date}:00-05:00`,
         category: movement?.category,
+        source: movement?.source ?? method,
       });
       onSaved?.();
       onClose();
@@ -113,117 +102,55 @@ export function MovementDialog({
           </button>
         </>
       ) : (
-        <>
-          {method !== "text" && (
-            <div className="extraction-box">
-              <strong>Extracción simulada</strong>
-              <p>
-                {method === "voice"
-                  ? "Usaremos un audio ficticio de ejemplo; no se activa el micrófono."
-                  : "La imagen se previsualiza en tu dispositivo. La propuesta es un ejemplo, no un análisis de su contenido."}
-              </p>
-              {method === "image" && (
-                <>
-                  <label>
-                    Imagen del comprobante
-                    <input
-                      type="file"
-                      accept="image/png,image/jpeg,image/webp"
-                      onChange={(event) => {
-                        setFile(event.target.files?.[0] ?? null);
-                        setPrepared(false);
-                      }}
-                    />
-                  </label>
-                  {preview && (
-                    <Image
-                      unoptimized
-                      width={400}
-                      height={180}
-                      className="capture-preview"
-                      src={preview}
-                      alt="Comprobante seleccionado"
-                    />
-                  )}
-                </>
-              )}
-              <button
-                className="button outline"
-                disabled={method === "image" && !file}
-                onClick={prepareExample}
-              >
-                {method === "voice"
-                  ? "Usar audio de ejemplo"
-                  : "Simular extracción"}
-              </button>
-              {prepared && method === "voice" && (
-                <p>
-                  Ejemplo: «{kind === "income" ? "Vendí" : "Compré"} productos
-                  por veinticinco soles».
-                </p>
-              )}
-            </div>
+        <form onSubmit={handleSave} onChange={() => setDirty(true)}>
+          <p className="muted">Revisa los datos antes de confirmar.</p>
+          <label>
+            Concepto
+            <input
+              required
+              maxLength={120}
+              value={description}
+              onChange={(event) => setDescription(event.target.value)}
+              placeholder="¿Qué registraste?"
+            />
+          </label>
+          <label>
+            Importe en soles
+            <input
+              required
+              inputMode="decimal"
+              value={amount}
+              onChange={(event) => setAmount(event.target.value)}
+              placeholder="0.00"
+            />
+          </label>
+          {movement?.category && (
+            <p className="muted">Categoría: {movement.category}</p>
           )}
-          {prepared && (
-            <form onSubmit={handleSave} onChange={() => setDirty(true)}>
-              <p className="muted">Revisa los datos antes de confirmar.</p>
-              <label>
-                Concepto
-                <input
-                  required
-                  maxLength={120}
-                  value={description}
-                  onChange={(event) => setDescription(event.target.value)}
-                  placeholder="¿Qué registraste?"
-                />
-              </label>
-              <label>
-                Importe en soles
-                <input
-                  required
-                  inputMode="decimal"
-                  value={amount}
-                  onChange={(event) => setAmount(event.target.value)}
-                  placeholder="0.00"
-                />
-              </label>
-              <label>
-                Fecha y hora · Lima
-                <input
-                  required
-                  type="datetime-local"
-                  value={date}
-                  onChange={(event) => setDate(event.target.value)}
-                />
-              </label>
-              {error && (
-                <p className="error" role="alert">
-                  {error}
-                </p>
-              )}
-              <button className="button primary" disabled={saving}>
-                {saving
-                  ? "Guardando…"
-                  : movement
-                    ? "Guardar cambios"
-                    : "Confirmar registro"}
-              </button>
-              <p className="muted small">Guardado local de demostración.</p>
-            </form>
+          <label>
+            Fecha y hora · Lima
+            <input
+              required
+              type="datetime-local"
+              value={date}
+              onChange={(event) => setDate(event.target.value)}
+            />
+          </label>
+          {error && (
+            <p className="error" role="alert">
+              {error}
+            </p>
           )}
-        </>
+          <button className="button primary" disabled={saving}>
+            {saving
+              ? "Guardando…"
+              : movement
+                ? "Guardar cambios"
+                : "Confirmar registro"}
+          </button>
+          <p className="muted small">Se guarda en este dispositivo.</p>
+        </form>
       )}
     </Dialog>
   );
-}
-function useImagePreview(file: File | null) {
-  const [preview, setPreview] = useState("");
-  useEffect(() => {
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => setPreview(String(reader.result));
-    reader.readAsDataURL(file);
-    return () => reader.abort();
-  }, [file]);
-  return file ? preview : "";
 }

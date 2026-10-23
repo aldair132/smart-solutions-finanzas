@@ -1,4 +1,4 @@
-import { captureExample, initialState } from "./mockData";
+import { initialState } from "./mockData";
 import type { DemoState, Movement, Space, User } from "./types";
 
 export function loadDemo(): DemoState {
@@ -56,13 +56,32 @@ export function saveUser(user: User, fullName: string): User {
   // TODO(BACKEND): actualizar cuenta autenticada con fullName; salida User; API por acordar, errores sin anunciar éxito.
   return { ...user, fullName: fullName.trim() };
 }
-export function extractExample(spaceId: string, kind: "income" | "expense") {
-  // TODO(IA): API del backend por acordar; entrada spaceId, kind y archivo/audio; salida borrador con importe/concepto/fecha o null si inciertos. Nunca guardar sin revisión y confirmación.
-  return {
-    ...captureExample,
-    spaceId,
-    kind,
-    description:
-      kind === "expense" ? "Compra de productos" : captureExample.description,
-  };
+const storageKey = "smart-solutions-demo-v1";
+
+export function loadStoredDemo(): DemoState | null {
+  // TODO(BACKEND): reemplazar por la lectura autenticada de loadDemo; localStorage solo conserva la demo en este navegador.
+  try {
+    const stored = window.localStorage.getItem(storageKey);
+    if (!stored) return null;
+    const state = JSON.parse(stored) as DemoState;
+    return Array.isArray(state.spaces) && Array.isArray(state.movements)
+      ? state
+      : null;
+  } catch {
+    return null;
+  }
+}
+export function storeDemo(state: DemoState) {
+  try {
+    window.localStorage.setItem(storageKey, JSON.stringify(state));
+  } catch {
+    // Sin almacenamiento (modo privado): la demo sigue en memoria.
+  }
+}
+export function clearStoredDemo() {
+  try {
+    window.localStorage.removeItem(storageKey);
+  } catch {
+    // Nada que limpiar.
+  }
 }
