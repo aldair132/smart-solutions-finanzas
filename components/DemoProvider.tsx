@@ -7,7 +7,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { getAiMode } from "@/lib/aiService";
+import { getAiStatus } from "@/lib/aiService";
 import {
   clearStoredDemo,
   loadDemo,
@@ -17,11 +17,12 @@ import {
   saveUser,
   storeDemo,
 } from "@/lib/demoService";
-import type { AiMode, DemoState, Movement } from "@/lib/types";
+import type { AiMode, AiStatus, DemoState, Movement } from "@/lib/types";
 
 type MovementInput = Omit<Movement, "id"> & { id?: string };
 type DemoContextValue = DemoState & {
   aiMode: AiMode | null;
+  supportsAudio: boolean;
   updateSpace: (name: string, id?: string) => string;
   updateMovement: (movement: MovementInput) => void;
   addMovements: (movements: MovementInput[]) => void;
@@ -31,13 +32,13 @@ type DemoContextValue = DemoState & {
 const DemoContext = createContext<DemoContextValue | null>(null);
 export function DemoProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState(loadDemo);
-  const [aiMode, setAiMode] = useState<AiMode | null>(null);
+  const [aiStatus, setAiStatus] = useState<AiStatus | null>(null);
   const hasRestoredRef = useRef(false);
   useEffect(() => {
     const storedState = loadStoredDemo();
     hasRestoredRef.current = true;
     if (storedState) queueMicrotask(() => setState(storedState));
-    getAiMode().then(setAiMode);
+    getAiStatus().then(setAiStatus);
   }, []);
   useEffect(() => {
     if (hasRestoredRef.current) storeDemo(state);
@@ -75,7 +76,8 @@ export function DemoProvider({ children }: { children: ReactNode }) {
     <DemoContext.Provider
       value={{
         ...state,
-        aiMode,
+        aiMode: aiStatus?.mode ?? null,
+        supportsAudio: aiStatus?.supportsAudio ?? true,
         updateSpace,
         updateMovement: (movement) => addMovements([movement]),
         addMovements,

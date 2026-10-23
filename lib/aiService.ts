@@ -1,5 +1,6 @@
 import type {
   AiMode,
+  AiStatus,
   ChatTurn,
   CreditAdvice,
   ExtractionResult,
@@ -11,8 +12,11 @@ type ExtractionInput = {
   kindHint: "income" | "expense" | null;
 } & (
   | { sourceType: "voice"; text: string }
+  | { sourceType: "voice"; audio: WavAudio }
   | { sourceType: "image"; image: { mediaType: "image/jpeg"; data: string } }
 );
+
+type WavAudio = { mediaType: "audio/wav"; data: string };
 
 async function postJson<Result>(url: string, body: unknown): Promise<Result> {
   const response = await fetch(url, {
@@ -27,24 +31,38 @@ async function postJson<Result>(url: string, body: unknown): Promise<Result> {
   return payload;
 }
 
-export async function getAiMode(): Promise<AiMode> {
+export async function getAiStatus(): Promise<AiStatus> {
   try {
     const response = await fetch("/api/ai/status");
-    const payload = (await response.json()) as { provider: string | null };
-    return payload.provider ? "ai" : "demo";
+    const payload = (await response.json()) as {
+      provider: string | null;
+      supportsAudio: boolean;
+    };
+    return {
+      mode: payload.provider ? "ai" : "demo",
+      supportsAudio: payload.supportsAudio,
+    };
   } catch {
-    return "demo";
+    return { mode: "demo", supportsAudio: true };
   }
+}
+
+export async function transcribeAudio(audio: WavAudio): Promise<string> {
+  const payload = await postJson<{ text: string }>("/api/ai/transcribe", {
+    audio,
+  });
+  return payload.text;
 }
 
 export async function extractMovementDrafts(
   input: ExtractionInput,
 ): Promise<ExtractionResult> {
   const { space, ...request } = input;
-  // TODO(BACKEND): cuando exista la API del compañero, mover /api/ai/extract detrás de la sesión. Entrada: spaceId, kindHint, sourceType y texto/imagen. Salida: ExtractionResult con importes inciertos en null; nunca guarda movimientos.
+  // TODO(BACKEND): cuando exista la API del compañero, mover /api/ai/extract detrás de la sesión. Entrada: spaceId, kindHint, sourceType y texto/imagen/audio. Salida: ExtractionResult con importes inciertos en null; nunca guarda movimientos.
   return postJson<ExtractionResult>("/api/ai/extract", {
     ...request,
     spaceType: space.type,
+    spaceName: space.name,
   });
 }
 
@@ -69,9 +87,9 @@ export async function getCreditAdvice(context: object): Promise<CreditAdvice> {
   });
 }
 
-// Reduce la foto a máx. 1600 px en JPEG para no exceder el límite de subida del servidor.
+// Reduce la foto a máx. 1280 px en JPEG para no exceder el límite de subida del servidor.
 export async function compressImage(file: File) {
-  const maxSide = 1600;
+  const maxSide = 1280;
   const bitmap = await createImageBitmap(file);
   const scale = Math.min(1, maxSide / Math.max(bitmap.width, bitmap.height));
   const canvas = document.createElement("canvas");
@@ -79,7 +97,7 @@ export async function compressImage(file: File) {
   canvas.height = Math.round(bitmap.height * scale);
   canvas.getContext("2d")?.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
   bitmap.close();
-  const dataUrl = canvas.toDataURL("image/jpeg", 0.82);
+  const dataUrl = canvas.toDataURL("image/jpeg", 0.8);
   return {
     mediaType: "image/jpeg" as const,
     data: dataUrl.slice(dataUrl.indexOf(",") + 1),

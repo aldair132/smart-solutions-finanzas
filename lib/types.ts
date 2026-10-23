@@ -20,6 +20,7 @@ export type User = { id: string; fullName: string };
 export type DemoState = { spaces: Space[]; movements: Movement[]; user: User };
 export type Period = "today" | "7d" | "month";
 export type AiMode = "ai" | "demo";
+export type AiStatus = { mode: AiMode; supportsAudio: boolean };
 export type MovementDraft = {
   kind: "income" | "expense";
   description: string;

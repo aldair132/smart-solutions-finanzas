@@ -1,7 +1,8 @@
 "use client";
 import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useAudioRecorder } from "@/hooks/useAudioRecorder";
 import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
-import { askAssistant } from "@/lib/aiService";
+import { askAssistant, transcribeAudio } from "@/lib/aiService";
 import { buildAssistantContext } from "@/lib/assistantContext";
 import type { ChatTurn } from "@/lib/types";
 import { useDemo } from "./DemoProvider";
@@ -22,15 +23,30 @@ export function AssistantDialog({
   spaceId: string;
   onClose: () => void;
 }) {
-  const { spaces, movements } = useDemo();
+  const { spaces, movements, aiMode, supportsAudio } = useDemo();
   const [history, setHistory] = useState<ChatTurn[]>([]);
   const [question, setQuestion] = useState("");
   const [isThinking, setIsThinking] = useState(false);
   const [error, setError] = useState("");
   const listEndRef = useRef<HTMLDivElement>(null);
+  const [isTranscribing, setIsTranscribing] = useState(false);
   const speech = useSpeechRecognition((text) =>
     setQuestion((current) => `${current} ${text}`.trim()),
   );
+  const recorder = useAudioRecorder(async (audio) => {
+    setIsTranscribing(true);
+    setError("");
+    try {
+      sendQuestion(await transcribeAudio(audio));
+    } catch (failure) {
+      setError(failure instanceof Error ? failure.message : "Sin audio.");
+    } finally {
+      setIsTranscribing(false);
+    }
+  });
+  // Con Gemini se graba audio (cualquier navegador); si no, dictado del navegador.
+  const usesRecorder = aiMode === "ai" && supportsAudio;
+  const isListening = usesRecorder ? recorder.isRecording : speech.isListening;
   useEffect(() => {
     listEndRef.current?.scrollIntoView({ block: "end" });
   }, [history, isThinking]);
@@ -97,9 +113,9 @@ export function AssistantDialog({
         )}
         <div ref={listEndRef} />
       </div>
-      {error && (
+      {(error || recorder.recorderError) && (
         <p className="error" role="alert">
-          {error}
+          {error || recorder.recorderError}
         </p>
       )}
       <form className="chat-form" onSubmit={handleSubmit}>
@@ -112,19 +128,30 @@ export function AssistantDialog({
           }
           maxLength={500}
           onChange={(event) => setQuestion(event.target.value)}
-          placeholder="Escribe o dicta tu pregunta"
+          placeholder={
+            recorder.isRecording
+              ? `Grabando ${recorder.seconds}s… toca el micrófono para enviar`
+              : isTranscribing
+                ? "Entendiendo tu audio…"
+                : "Escribe o dicta tu pregunta"
+          }
         />
-        {speech.isSupported && (
+        {(usesRecorder || speech.isSupported) && (
           <button
             type="button"
-            className={`icon-button ${speech.isListening ? "listening" : ""}`}
-            aria-label={
-              speech.isListening ? "Detener dictado" : "Dictar pregunta"
-            }
-            aria-pressed={speech.isListening}
-            onClick={
-              speech.isListening ? speech.stopListening : speech.startListening
-            }
+            className={`icon-button ${isListening ? "listening" : ""}`}
+            aria-label={isListening ? "Detener y enviar" : "Dictar pregunta"}
+            aria-pressed={isListening}
+            disabled={isTranscribing}
+            onClick={() => {
+              if (usesRecorder)
+                return recorder.isRecording
+                  ? recorder.stopRecording()
+                  : recorder.startRecording();
+              return speech.isListening
+                ? speech.stopListening()
+                : speech.startListening();
+            }}
           >
             <Icon name="mic" />
           </button>

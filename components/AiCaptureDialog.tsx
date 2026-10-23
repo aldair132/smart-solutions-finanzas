@@ -1,6 +1,7 @@
 "use client";
 import Image from "next/image";
 import { useState, type FormEvent } from "react";
+import { useAudioRecorder } from "@/hooks/useAudioRecorder";
 import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
 import { movementCategories } from "@/lib/aiSchemas";
 import { compressImage, extractMovementDrafts } from "@/lib/aiService";
@@ -19,6 +20,7 @@ type EditableDraft = {
   category: string;
 };
 type CapturedImage = Awaited<ReturnType<typeof compressImage>>;
+type ExtractionRequest = Parameters<typeof extractMovementDrafts>[0];
 const voiceExamples = [
   "Vendí 3 menús a 12 soles y una gaseosa a 3",
   "Compré 2 balones de gas a 50 y pagué 15 de transporte",
@@ -54,7 +56,7 @@ export function AiCaptureDialog({
   onClose: () => void;
   onSaved: (count: number) => void;
 }) {
-  const { addMovements } = useDemo();
+  const { addMovements, supportsAudio } = useDemo();
   const [transcript, setTranscript] = useState("");
   const [image, setImage] = useState<CapturedImage | null>(null);
   const [drafts, setDrafts] = useState<EditableDraft[] | null>(null);
@@ -67,6 +69,9 @@ export function AiCaptureDialog({
   const speech = useSpeechRecognition((text) =>
     setTranscript((current) => `${current} ${text}`.trim()),
   );
+  const recorder = useAudioRecorder((audio) =>
+    runExtraction({ space, kindHint, sourceType: "voice", audio }),
+  );
   const isPersonal = space.type === "personal";
   const isDirty = Boolean(transcript || image || drafts);
   async function handleImage(file: File | undefined) {
@@ -78,29 +83,16 @@ export function AiCaptureDialog({
       setError("No pudimos abrir esa imagen. Prueba con una foto JPG o PNG.");
     }
   }
-  async function processCapture() {
+  async function runExtraction(request: ExtractionRequest) {
     if (isProcessing) return;
-    speech.stopListening();
     setIsProcessing(true);
     setError("");
     try {
-      const extraction =
-        method === "voice"
-          ? await extractMovementDrafts({
-              space,
-              kindHint,
-              sourceType: "voice",
-              text: transcript,
-            })
-          : await extractMovementDrafts({
-              space,
-              kindHint,
-              sourceType: "image",
-              image: { mediaType: image!.mediaType, data: image!.data },
-            });
+      const extraction = await extractMovementDrafts(request);
       setDrafts(toEditableDrafts(extraction));
       setResult({ mode: extraction.mode, notes: extraction.notes });
-      if (extraction.transcript && method === "image")
+      // Con audio o imagen, la IA devuelve lo que escuchó o leyó.
+      if (extraction.transcript && !("text" in request))
         setTranscript(extraction.transcript);
     } catch (failure) {
       setError(
@@ -109,6 +101,20 @@ export function AiCaptureDialog({
     } finally {
       setIsProcessing(false);
     }
+  }
+  function processCapture() {
+    speech.stopListening();
+    if (method === "voice") {
+      runExtraction({ space, kindHint, sourceType: "voice", text: transcript });
+      return;
+    }
+    if (image)
+      runExtraction({
+        space,
+        kindHint,
+        sourceType: "image",
+        image: { mediaType: image.mediaType, data: image.data },
+      });
   }
   function updateDraft(key: string, changes: Partial<EditableDraft>) {
     setDrafts((current) =>
@@ -172,7 +178,26 @@ export function AiCaptureDialog({
       <p className="dialog-space">{space.name} · PEN</p>
       {!drafts && method === "voice" && (
         <div className="ai-capture">
-          {speech.isSupported ? (
+          {supportsAudio ? (
+            <button
+              type="button"
+              className={`mic-button ${recorder.isRecording ? "listening" : ""}`}
+              aria-pressed={recorder.isRecording}
+              disabled={isProcessing}
+              onClick={
+                recorder.isRecording
+                  ? recorder.stopRecording
+                  : recorder.startRecording
+              }
+            >
+              <Icon name="mic" />
+              {isProcessing
+                ? "La IA está escuchando tu audio…"
+                : recorder.isRecording
+                  ? `Grabando ${recorder.seconds}s · toca para terminar`
+                  : "Toca, habla y vuelve a tocar"}
+            </button>
+          ) : speech.isSupported ? (
             <button
               type="button"
               className={`mic-button ${speech.isListening ? "listening" : ""}`}
@@ -199,13 +224,15 @@ export function AiCaptureDialog({
               {speech.interimText}
             </p>
           )}
-          {speech.speechError && (
+          {(recorder.recorderError || speech.speechError) && (
             <p className="error" role="alert">
-              {speech.speechError}
+              {recorder.recorderError || speech.speechError}
             </p>
           )}
           <label>
-            Lo que dijiste (puedes corregirlo)
+            {supportsAudio
+              ? "¿Prefieres escribir?"
+              : "Lo que dijiste (puedes corregirlo)"}
             <textarea
               rows={3}
               maxLength={4000}
@@ -228,10 +255,12 @@ export function AiCaptureDialog({
           <button
             type="button"
             className="button primary"
-            disabled={!transcript.trim() || isProcessing}
+            disabled={
+              !transcript.trim() || isProcessing || recorder.isRecording
+            }
             onClick={processCapture}
           >
-            {isProcessing ? "La IA está ordenando…" : "Ordenar con IA"}
+            {isProcessing ? "La IA está ordenando…" : "Ordenar texto con IA"}
           </button>
         </div>
       )}

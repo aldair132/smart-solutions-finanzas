@@ -27,7 +27,7 @@ Usar un nombre de proyecto neutro: la URL no debe incluir nombres de personas, u
 | Ruta | Función |
 | --- | --- |
 | `/` | Resumen de espacios (negocios y cuenta personal). |
-| `/espacios/[id]` | Registro por **Voz** (dictado es-PE; varias ventas y gastos en una frase), **Foto** (boleta, ticket o página de cuaderno) o **Escribir**. La IA propone borradores editables; nada se guarda sin confirmar. |
+| `/espacios/[id]` | Registro por **Voz** (se graba el audio y Gemini lo transcribe y ordena en una sola llamada; funciona en cualquier navegador), **Foto** (boleta, ticket o página de cuaderno) o **Escribir**. La IA propone borradores editables; nada se guarda sin confirmar. |
 | `/espacios/[id]/movimientos` | Historial por periodo, edición y PDF. |
 | `/espacios/[id]/credito` | Perfil para crédito de 90 días: ventas y resultado promedio, margen, constancia, estabilidad, tendencia, comprobantes y cuota referencial; puntaje de preparación 0–100, explicación con IA y **reporte PDF** para la entidad. |
 | `/espacios/[id]/perfil` | Perfil, configuración y salida de la demo. |
@@ -37,13 +37,15 @@ Datos de ejemplo: 90 días de historial generados de forma determinista (`lib/mo
 
 ## Arquitectura
 
-- `app/api/ai/extract` — voz (texto transcrito en el navegador) o imagen → `ExtractionResult` validado con zod. Importes inciertos llegan como `null`.
+- `app/api/ai/extract` — voz (audio WAV o texto) o imagen → `ExtractionResult` validado con zod. Importes inciertos llegan como `null`.
 - `app/api/ai/assistant` — chat (`task: "chat"`) y lectura del perfil (`task: "credit"`).
-- `app/api/ai/status` — indica si hay proveedor configurado.
-- `lib/server/aiProvider.ts` — salida estructurada con Claude (SDK oficial) o Gemini (REST). Las claves solo existen en servidor.
+- `app/api/ai/transcribe` — audio → texto para dictar preguntas al asistente.
+- `app/api/ai/status` — indica si hay proveedor configurado y si acepta audio.
+- `lib/server/aiProvider.ts` — salida estructurada con Gemini (REST; por defecto `gemini-flash-lite-latest` con razonamiento mínimo, 1–3 s, y `gemini-flash-latest` de respaldo si está saturado) o Claude (SDK oficial). Las claves solo existen en servidor.
 - `lib/creditProfile.ts` — indicadores y puntaje, funciones puras y explicables (la IA explica, no calcula).
-- `lib/aiService.ts` — cliente de las rutas y compresión de fotos (máx. 1600 px).
-- `hooks/useSpeechRecognition.ts` — Web Speech API (Chrome/Edge/Android). En navegadores sin soporte se escribe el texto y la IA lo ordena igual.
+- `lib/aiService.ts` — cliente de las rutas y compresión de fotos (máx. 1280 px).
+- `hooks/useAudioRecorder.ts` + `lib/audioEncoding.ts` — graba con MediaRecorder y convierte a WAV mono 16 kHz (máx. 60 s).
+- `hooks/useSpeechRecognition.ts` — dictado del navegador, solo como respaldo cuando el proveedor es Claude (no acepta audio).
 
 ## Integraciones que siguen simuladas
 

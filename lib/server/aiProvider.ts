@@ -7,26 +7,44 @@ export type AiImage = {
   mediaType: "image/jpeg" | "image/png" | "image/webp";
   data: string;
 };
+export type AiAudio = { mediaType: "audio/wav"; data: string };
 type StructuredRequest<Schema extends z.ZodType> = {
   system: string;
   prompt: string;
   schema: Schema;
   image?: AiImage;
+  audio?: AiAudio;
 };
+type GeminiModel = { name: string; thinkingLevel: "minimal" | "low" };
+
+// Flash-Lite responde en 2–3 s; el segundo modelo solo se usa si el primero está saturado.
+const geminiModels: GeminiModel[] = [
+  {
+    name: process.env.GEMINI_MODEL ?? "gemini-flash-lite-latest",
+    thinkingLevel: "minimal",
+  },
+  { name: "gemini-flash-latest", thinkingLevel: "low" },
+];
+const geminiTimeoutMs = 20_000;
 
 // Las claves solo se leen en servidor; nunca usar variables NEXT_PUBLIC_.
 export function getAiProvider(): AiProviderName | null {
-  if (process.env.ANTHROPIC_API_KEY) return "anthropic";
   if (process.env.GEMINI_API_KEY) return "gemini";
+  if (process.env.ANTHROPIC_API_KEY) return "anthropic";
   return null;
+}
+
+// Solo Gemini acepta audio; con Claude la voz usa el dictado del navegador.
+export function supportsAudio() {
+  return getAiProvider() !== "anthropic";
 }
 
 export async function generateStructured<Schema extends z.ZodType>(
   request: StructuredRequest<Schema>,
 ): Promise<z.infer<Schema>> {
   const provider = getAiProvider();
-  if (provider === "anthropic") return generateWithClaude(request);
   if (provider === "gemini") return generateWithGemini(request);
+  if (provider === "anthropic") return generateWithClaude(request);
   throw new Error("No hay proveedor de IA configurado.");
 }
 
@@ -35,9 +53,11 @@ async function generateWithClaude<Schema extends z.ZodType>({
   prompt,
   schema,
   image,
+  audio,
 }: StructuredRequest<Schema>): Promise<z.infer<Schema>> {
   const client = new Anthropic();
   const content: Anthropic.ContentBlockParam[] = [];
+  if (audio) throw new Error("Claude no procesa audio; usa el dictado.");
   if (image)
     content.push({
       type: "image",
@@ -56,24 +76,48 @@ async function generateWithClaude<Schema extends z.ZodType>({
   return response.parsed_output;
 }
 
-async function generateWithGemini<Schema extends z.ZodType>({
-  system,
-  prompt,
-  schema,
-  image,
-}: StructuredRequest<Schema>): Promise<z.infer<Schema>> {
-  const model = process.env.GEMINI_MODEL ?? "gemini-flash-latest";
+async function generateWithGemini<Schema extends z.ZodType>(
+  request: StructuredRequest<Schema>,
+): Promise<z.infer<Schema>> {
+  let lastFailure: unknown = null;
+  for (const model of geminiModels) {
+    try {
+      return await callGemini(model, request);
+    } catch (failure) {
+      lastFailure = failure;
+      if (!isRetryableGeminiFailure(failure)) break;
+    }
+  }
+  throw lastFailure;
+}
+
+function isRetryableGeminiFailure(failure: unknown) {
+  if (failure instanceof DOMException) return true;
+  return (
+    failure instanceof Error &&
+    /Gemini respondió (429|5\d\d)/.test(failure.message)
+  );
+}
+
+async function callGemini<Schema extends z.ZodType>(
+  model: GeminiModel,
+  { system, prompt, schema, image, audio }: StructuredRequest<Schema>,
+): Promise<z.infer<Schema>> {
   const jsonSchema = z.toJSONSchema(schema);
+  const parts: object[] = [];
   // Gemini rechaza la clave $schema del estándar JSON Schema.
   delete jsonSchema.$schema;
-  const parts: object[] = [];
-  if (image)
-    parts.push({ inlineData: { mimeType: image.mediaType, data: image.data } });
+  for (const media of [image, audio])
+    if (media)
+      parts.push({
+        inlineData: { mimeType: media.mediaType, data: media.data },
+      });
   parts.push({ text: prompt });
   const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+    `https://generativelanguage.googleapis.com/v1beta/models/${model.name}:generateContent`,
     {
       method: "POST",
+      signal: AbortSignal.timeout(geminiTimeoutMs),
       headers: {
         "Content-Type": "application/json",
         "x-goog-api-key": process.env.GEMINI_API_KEY ?? "",
@@ -84,13 +128,14 @@ async function generateWithGemini<Schema extends z.ZodType>({
         generationConfig: {
           responseMimeType: "application/json",
           responseJsonSchema: jsonSchema,
+          thinkingConfig: { thinkingLevel: model.thinkingLevel },
         },
       }),
     },
   );
   if (!response.ok)
     throw new Error(
-      `Gemini respondió ${response.status}: ${await response.text()}`,
+      `Gemini respondió ${response.status} (${model.name}): ${await response.text()}`,
     );
   const payload = (await response.json()) as {
     candidates?: { content?: { parts?: { text?: string }[] } }[];

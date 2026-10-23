@@ -39,4 +39,7 @@ export const creditAdviceSchema = z.object({
     .array(z.string())
     .describe("Hasta 3 acciones concretas para mejorar el perfil"),
 });
+export const transcriptionSchema = z.object({
+  text: z.string().describe("Transcripción literal del audio"),
+});
 export type Extraction = z.infer<typeof extractionSchema>;
