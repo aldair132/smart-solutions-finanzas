@@ -42,7 +42,15 @@ export function useAudioRecorder(onRecorded: (audio: WavAudio) => void) {
   async function startRecording() {
     setRecorderError("");
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      // Filtros del navegador: menos ruido de tienda y voz con volumen parejo.
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          channelCount: 1,
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        },
+      });
       const recorder = new MediaRecorder(stream);
       const chunks: Blob[] = [];
       recorder.ondataavailable = (event) => chunks.push(event.data);

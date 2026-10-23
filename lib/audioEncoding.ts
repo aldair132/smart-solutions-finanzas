@@ -32,6 +32,17 @@ function encodeWav(samples: Float32Array) {
   return buffer;
 }
 
+// Sube el volumen de grabaciones bajas hasta ~90 % del máximo, sin saturar.
+function normalizeVolume(samples: Float32Array) {
+  const peak = samples.reduce(
+    (maximum, sample) => Math.max(maximum, Math.abs(sample)),
+    0,
+  );
+  if (peak < 0.01 || peak > 0.9) return samples;
+  const gain = Math.min(0.9 / peak, 8);
+  return samples.map((sample) => sample * gain);
+}
+
 function toBase64(buffer: ArrayBuffer) {
   const bytes = new Uint8Array(buffer);
   const chunkSize = 0x8000;
@@ -62,7 +73,7 @@ export async function convertRecordingToWav(recording: Blob) {
     const rendered = await offlineContext.startRendering();
     return {
       mediaType: "audio/wav" as const,
-      data: toBase64(encodeWav(rendered.getChannelData(0))),
+      data: toBase64(encodeWav(normalizeVolume(rendered.getChannelData(0)))),
     };
   } finally {
     await audioContext.close();

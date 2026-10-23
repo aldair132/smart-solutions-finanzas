@@ -307,9 +307,32 @@ export function AiCaptureDialog({
                 ? `La IA encontró ${drafts.length} movimiento${drafts.length === 1 ? "" : "s"}`
                 : "Extracción de ejemplo (modo demostración)"}
             </strong>
-            {transcript && <p>«{transcript}»</p>}
+            {method === "image" && transcript && <p>«{transcript}»</p>}
             {result.notes && <p>{result.notes}</p>}
           </div>
+          {method === "voice" && (
+            <div className="transcript-review">
+              <label>
+                Lo que entendió la IA (corrígelo si algo está mal)
+                <textarea
+                  rows={3}
+                  maxLength={4000}
+                  value={transcript}
+                  onChange={(event) => setTranscript(event.target.value)}
+                />
+              </label>
+              <button
+                type="button"
+                className="text-button"
+                disabled={!transcript.trim() || isProcessing}
+                onClick={processCapture}
+              >
+                {isProcessing
+                  ? "Ordenando…"
+                  : "Volver a ordenar con este texto"}
+              </button>
+            </div>
+          )}
           <p className="muted">Revisa y corrige antes de confirmar.</p>
           {drafts.map((draft) => (
             <fieldset className="draft-card" key={draft.key}>

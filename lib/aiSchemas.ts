@@ -13,7 +13,9 @@ export const movementCategories = [
 export const extractionSchema = z.object({
   transcript: z
     .string()
-    .describe("Texto escuchado o leído en la imagen, resumido en una línea"),
+    .describe(
+      "Audio: transcripción literal palabra por palabra, sin resumir. Imagen: qué comprobante es y su total, en una línea",
+    ),
   notes: z
     .string()
     .describe("Advertencias breves para el usuario; vacío si todo es claro"),

@@ -1871,3 +1871,7 @@ form select:focus-visible {
     text-align: center;
   }
 }
+.transcript-review {
+  display: grid;
+  gap: 4px;
+}
