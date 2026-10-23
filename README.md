@@ -1,36 +1,36 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Mis espacios · Frontend de demostración
 
-## Getting Started
+Aplicación Next.js con cuatro vistas basadas en la referencia visual y las guías de `docs/`.
 
-First, run the development server:
+## Ejecutar
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Abrir http://localhost:3000. Verificaciones disponibles: `npm run lint` y `npm run build` (incluye TypeScript).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Rutas
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- `/`: espacios, resumen del día y creación de negocios.
+- `/espacios/[spaceId]`: registro de ventas/gastos y últimos cinco movimientos.
+- `/espacios/[spaceId]/movimientos?period=today|7d|month`: historial, edición y PDF local.
+- `/espacios/[spaceId]/perfil`: perfil común, configuración del espacio y salida de la demo.
+- `/demo`: pantalla de salida.
 
-## Learn More
+Espacios iniciales: `bodega`, `comida`, `personal`. Fecha demo fija: 23/10/2026, zona America/Lima, moneda PEN. La cuenta personal registra únicamente gastos. El estado es compartido durante la navegación y se reinicia al recargar o salir de la demo.
 
-To learn more about Next.js, take a look at the following resources:
+## Organización e integración pendiente
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- `lib/types.ts`: contratos propuestos del frontend.
+- `lib/mockData.ts`: fixtures y propuesta de extracción simulada.
+- `lib/demoService.ts`: puntos de sustitución marcados con TODO(BACKEND) y TODO(IA).
+- `components/DemoProvider.tsx`: estado compartido en memoria.
+- `lib/finance.ts`: importes en céntimos, filtros y formato por zona horaria.
+- `lib/exportMovementsPdf.ts`: PDF generado con jsPDF, usando solamente los movimientos filtrados.
+- `components/`: pantallas, formularios y elementos visuales reutilizados.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+No hay autenticación, almacenamiento remoto ni extracción IA real. Voz usa un ejemplo; Foto muestra el archivo local y una propuesta ficticia; Escribir permite registro manual. Todos requieren revisión y confirmación. Biometría está deshabilitada; soporte y documentos legales se identifican como pendientes. No se recopilan contraseñas.
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Los endpoints deben acordarse con backend. La futura API debe comprobar sesión y pertenencia de cada espacio, validar las escrituras y devolver errores explícitos. El PDF permanece en frontend.
