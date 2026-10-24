@@ -18,15 +18,18 @@ type StructuredRequest<Schema extends z.ZodType> = {
 };
 type GeminiModel = { name: string; thinkingLevel: "minimal" | "low" };
 
-// Flash-Lite responde en 2–3 s; el segundo modelo solo se usa si el primero está saturado.
+// Gemini tiene latencia variable (2 s a 20+ s según la demanda). Se usan modelos ligeros
+// en cascada: si uno no responde a tiempo, se lanza el siguiente en paralelo y gana el primero.
 const geminiModels: GeminiModel[] = [
   {
     name: process.env.GEMINI_MODEL ?? "gemini-flash-lite-latest",
     thinkingLevel: "minimal",
   },
-  { name: "gemini-flash-latest", thinkingLevel: "low" },
+  { name: "gemini-3.1-flash-lite", thinkingLevel: "minimal" },
+  { name: "gemini-3.5-flash", thinkingLevel: "low" },
 ];
-const geminiTimeoutMs = 20_000;
+const hedgeDelayMs = 7_000;
+const geminiTimeoutMs = 25_000;
 
 // Las claves solo se leen en servidor; nunca usar variables NEXT_PUBLIC_.
 export function getAiProvider(): AiProviderName | null {
@@ -89,16 +92,37 @@ async function generateWithClaude<Schema extends z.ZodType>({
 async function generateWithGemini<Schema extends z.ZodType>(
   request: StructuredRequest<Schema>,
 ): Promise<z.infer<Schema>> {
-  let lastFailure: unknown = null;
-  for (const model of geminiModels) {
-    try {
-      return await callGemini(model, request);
-    } catch (failure) {
-      lastFailure = failure;
-      if (!isRetryableGeminiFailure(failure)) break;
-    }
+  const controllers = geminiModels.map(() => new AbortController());
+  const timers: ReturnType<typeof setTimeout>[] = [];
+  try {
+    return await new Promise<z.infer<Schema>>((resolve, reject) => {
+      let failures = 0;
+      let lastFailure: unknown = null;
+      let started = 0;
+      const startNext = () => {
+        const index = started;
+        if (index >= geminiModels.length) return;
+        started += 1;
+        callGemini(geminiModels[index], request, controllers[index].signal)
+          .then(resolve)
+          .catch((failure) => {
+            if (controllers[index].signal.aborted) return;
+            failures += 1;
+            lastFailure = failure;
+            // Un error de la petición (400) no mejora con otro modelo.
+            if (!isRetryableGeminiFailure(failure)) return reject(failure);
+            if (failures === geminiModels.length) return reject(lastFailure);
+            startNext();
+          });
+        timers.push(setTimeout(startNext, hedgeDelayMs));
+      };
+      startNext();
+    });
+  } finally {
+    // El primer resultado gana: se cancelan las demás peticiones y temporizadores.
+    timers.forEach(clearTimeout);
+    controllers.forEach((controller) => controller.abort());
   }
-  throw lastFailure;
 }
 
 function isRetryableGeminiFailure(failure: unknown) {
@@ -112,6 +136,7 @@ function isRetryableGeminiFailure(failure: unknown) {
 async function callGemini<Schema extends z.ZodType>(
   model: GeminiModel,
   { system, prompt, schema, images = [], audio }: StructuredRequest<Schema>,
+  signal: AbortSignal,
 ): Promise<z.infer<Schema>> {
   const jsonSchema = z.toJSONSchema(schema);
   const parts: object[] = [];
@@ -128,7 +153,7 @@ async function callGemini<Schema extends z.ZodType>(
     `https://generativelanguage.googleapis.com/v1beta/models/${model.name}:generateContent`,
     {
       method: "POST",
-      signal: AbortSignal.timeout(geminiTimeoutMs),
+      signal: AbortSignal.any([signal, AbortSignal.timeout(geminiTimeoutMs)]),
       headers: {
         "Content-Type": "application/json",
         "x-goog-api-key": process.env.GEMINI_API_KEY ?? "",

@@ -11,6 +11,7 @@ Reglas:
 - Una foto puede ser una boleta, factura, ticket, nota de venta o una página de cuaderno escrita a mano. En un cuaderno, cada fila es un movimiento; ignora las filas de totales o subtotales.
 - En boletas de compra registra un solo gasto por el total, salvo que los productos sean de categorías claramente distintas.
 - Si un importe no se lee o no se entiende, usa null y explícalo en notes. Nunca inventes importes.
+- notes la lee el emprendedor: escribe en español sencillo, máximo 2 frases, sin términos técnicos (nunca "null", "JSON", "campo" ni nombres de variables). Ej.: "No pude leer el monto de la foto 2; escríbelo tú."
 - Si el texto no describe dinero del negocio, devuelve movements vacío y explica en notes.
 - Conceptos cortos y claros en español, sin nombres de personas (el nombre del cliente va solo en customer).
 - En audio, transcript es la transcripción LITERAL de lo que se dijo; no la resumas ni cambies palabras. Si una parte no se entiende, escribe [inaudible] y avisa en notes.`;

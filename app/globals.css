@@ -1471,7 +1471,7 @@ input {
 /* IA: captura por voz/foto, perfil para crédito y asistente */
 textarea,
 form select,
-.draft-row select {
+.draft-field select {
   border: 1px solid #b7cebe;
   border-radius: 9px;
   width: 100%;
@@ -1609,41 +1609,6 @@ form select:focus-visible {
 }
 .ai-result p {
   color: var(--muted);
-}
-.draft-card {
-  border: 1px solid var(--border);
-  background: white;
-  border-radius: 14px;
-  padding: 14px;
-  margin: 0;
-  display: grid;
-  gap: 12px;
-}
-.draft-kind {
-  display: flex;
-  gap: 8px;
-}
-.draft-kind button {
-  flex: 1;
-  min-height: 40px;
-  border-radius: 9px;
-  border: 1px solid #c8d8cd;
-  font-size: 14px;
-}
-.draft-kind .selected {
-  background: var(--green);
-  border-color: var(--green);
-  color: white;
-  font-weight: 700;
-}
-.draft-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-}
-.draft-card input[aria-invalid="true"] {
-  border-color: #b12e2e;
-  background: #fff5f5;
 }
 .text-button {
   color: var(--green);
@@ -2263,30 +2228,266 @@ form select:focus-visible {
   width: 16px;
   height: 16px;
 }
-.draft-source {
+
+/* Revisión de borradores: resumen primero, edición al tocar */
+.review-form {
+  gap: 14px;
+}
+.review-totals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.review-totals span {
+  padding: 6px 12px;
+  border-radius: 30px;
+  font-size: 13px;
+  font-weight: 700;
+}
+.review-totals .income {
+  background: #e3f4e8;
+  color: #166534;
+}
+.review-totals .expense {
+  background: #fdecec;
+  color: #9b2c2c;
+}
+.review-totals .credit {
+  background: #fff3df;
+  color: #8a5300;
+}
+.review-list {
   display: grid;
-  grid-template-columns: auto auto 1fr;
-  align-items: center;
   gap: 10px;
-  padding-bottom: 10px;
-  border-bottom: 1px dashed var(--border);
 }
-.draft-source img {
-  width: 44px;
-  height: 44px;
+.draft-card {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--green);
+  border-radius: 14px;
+  background: white;
+  scroll-margin: 16px;
+}
+.draft-card.warning {
+  border-left-color: #d08a16;
+}
+.draft-card.invalid {
+  border-left-color: #b12e2e;
+}
+.draft-summary {
+  display: grid;
+  grid-template-columns: 52px 1fr auto;
+  align-items: center;
+  gap: 12px;
+}
+.draft-thumb {
+  width: 52px;
+  height: 52px;
+  border-radius: 10px;
   object-fit: cover;
-  border-radius: 8px;
+  border: 1px solid var(--border);
 }
-.draft-source span {
+.draft-thumb.placeholder {
+  display: grid;
+  place-items: center;
+  background: var(--mint);
+  color: var(--green);
+}
+.draft-summary-text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.draft-summary-text strong {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  font-size: 15px;
+  line-height: 1.3;
+}
+.draft-summary-text small {
+  font-size: 12px;
+  color: var(--muted);
+}
+.kind-pill {
+  justify-self: start;
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+.kind-pill.income,
+.kind-pill.credit_collection {
+  background: #e3f4e8;
+  color: #166534;
+}
+.kind-pill.expense {
+  background: #fdecec;
+  color: #9b2c2c;
+}
+.kind-pill.credit_sale {
+  background: #fff3df;
+  color: #8a5300;
+}
+.draft-summary-side {
+  display: grid;
+  justify-items: end;
+  gap: 4px;
+}
+.draft-summary-side strong {
+  font-size: 16px;
+  white-space: nowrap;
+}
+.draft-summary-side strong.missing {
+  color: #b12e2e;
+  font-size: 13px;
+}
+.review-chip {
+  padding: 2px 8px;
+  border-radius: 20px;
+  background: #fff3df;
+  color: #8a5300;
+  font-size: 11px;
+  font-weight: 700;
+}
+.review-chip.error {
+  background: #fdecec;
+  color: #9b2c2c;
+}
+.draft-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-top: 1px solid #edf3ef;
+  padding-top: 4px;
+}
+.draft-actions .text-button {
+  min-height: 36px;
+}
+.icon-text-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 36px;
+  font-size: 13px;
+  font-weight: 700;
+}
+.icon-text-button .icon {
+  width: 16px;
+  height: 16px;
+}
+.icon-text-button.danger {
+  color: #9b2c2c;
+}
+.draft-editor {
+  display: grid;
+  gap: 12px;
+  padding-top: 6px;
+}
+.draft-photo-large {
+  width: 100%;
+  height: auto;
+  max-height: 260px;
+  object-fit: contain;
+  border-radius: 10px;
+  background: #f1f5f2;
+}
+.segmented {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  padding: 3px;
+  border-radius: 10px;
+  background: #eef4f0;
+}
+.segmented button {
+  min-height: 38px;
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.segmented button[aria-checked="true"] {
+  background: white;
+  color: var(--green);
+  font-weight: 700;
+  box-shadow: 0 1px 3px #173b2a26;
+}
+.draft-field {
+  display: grid;
+  gap: 5px;
+}
+.draft-field > span {
+  font-size: 13px;
+  font-weight: 700;
+}
+.draft-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.money-input {
+  position: relative;
+  display: block;
+}
+.money-input > span {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--muted);
+  font-weight: 700;
+  pointer-events: none;
+}
+.money-input input {
+  padding-left: 38px;
+  font-variant-numeric: tabular-nums;
+}
+.draft-field input[aria-invalid="true"] {
+  border-color: #b12e2e;
+  background: #fff7f7;
+}
+.field-error {
+  color: #b12e2e;
+  font-size: 12px;
+  font-weight: 700;
+}
+.field-warning {
+  color: #8a5300;
+  font-size: 12px;
+  font-weight: 700;
+}
+.transcript-review summary {
+  cursor: pointer;
   font-size: 13px;
   font-weight: 700;
   color: var(--green);
+  min-height: 36px;
+  display: flex;
+  align-items: center;
 }
-.draft-source label {
-  font-size: 12px;
+.transcript-review textarea {
+  margin-top: 6px;
 }
-.draft-source input {
-  min-height: 40px;
-  padding: 6px 8px;
-  font-size: 14px;
+.review-footer {
+  position: sticky;
+  bottom: -25px;
+  display: grid;
+  gap: 6px;
+  margin: 0 -25px -25px;
+  padding: 12px 25px 18px;
+  background: linear-gradient(to bottom, #fafcfaee, var(--background) 30%);
+  border-top: 1px solid var(--border);
+}
+@media (max-width: 420px) {
+  .segmented {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .draft-grid {
+    grid-template-columns: 1fr;
+  }
 }
