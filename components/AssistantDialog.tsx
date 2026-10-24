@@ -1,4 +1,5 @@
 "use client";
+import { MessageDialog } from "./MessageDialog";
 import {
   useEffect,
   useRef,
@@ -50,7 +51,7 @@ export function AssistantDialog({
   spaceId: string;
   onClose: () => void;
 }) {
-  const { spaces, movements, receivables, aiMode, supportsAudio, neuralVoice } =
+  const { spaces, movements, receivables, aiMode, aiStatusFailed, supportsAudio, neuralVoice } =
     useDemo();
   const [history, setHistory] = useState<ChatTurn[]>([]);
   const [question, setQuestion] = useState("");
@@ -59,6 +60,9 @@ export function AssistantDialog({
   const [isVoiceReplyOn, setIsVoiceReplyOn] = useState(true);
   const [isConversing, setIsConversing] = useState(false);
   const isConversingRef = useRef(false);
+  const activeRef = useRef(true);
+  const requestRef = useRef<AbortController | null>(null);
+  const voiceReplyRef = useRef(true);
   const listEndRef = useRef<HTMLDivElement>(null);
   // Conversación por voz solo con Gemini (entiende audio); si no, dictado del navegador.
   const canConverse = aiMode === "ai" && supportsAudio;
@@ -81,10 +85,21 @@ export function AssistantDialog({
   }, [history, isThinking]);
   useEffect(() => {
     const preference = readVoiceReplyPreference();
-    queueMicrotask(() => setIsVoiceReplyOn(preference));
+    activeRef.current = true;
+    voiceReplyRef.current = preference;
+    queueMicrotask(() => {
+      if (activeRef.current) setIsVoiceReplyOn(preference);
+    });
+    return () => {
+      activeRef.current = false;
+      isConversingRef.current = false;
+      requestRef.current?.abort();
+      requestRef.current = null;
+    };
   }, []);
   function toggleVoiceReply() {
     const nextValue = !isVoiceReplyOn;
+    voiceReplyRef.current = nextValue;
     setIsVoiceReplyOn(nextValue);
     if (!nextValue) voice.stop();
     try {
@@ -97,15 +112,18 @@ export function AssistantDialog({
     }
   }
   function listenAgain() {
+    if (!activeRef.current || !isConversingRef.current) return;
     recorder.startRecording({
       autoStopOnSilence: true,
       onNoSpeech: () => {
+        if (!activeRef.current) return;
         endConversation();
         setError("No te escuché. Toca el círculo cuando quieras seguir.");
       },
     });
   }
   function startConversation() {
+    if (!activeRef.current || requestRef.current) return;
     isConversingRef.current = true;
     setIsConversing(true);
     setError("");
@@ -114,7 +132,11 @@ export function AssistantDialog({
   }
   function endConversation() {
     isConversingRef.current = false;
+    requestRef.current?.abort();
+    requestRef.current = null;
     setIsConversing(false);
+    setIsThinking(false);
+    speech.cancelListening();
     recorder.cancelRecording();
     voice.stop();
   }
@@ -129,8 +151,11 @@ export function AssistantDialog({
   }
   async function askQuestion(input: { question?: string; audio?: WavAudio }) {
     const typedQuestion = input.question?.trim();
-    const shouldSpeak = isConversingRef.current || isVoiceReplyOn;
-    if (isThinking || (!typedQuestion && !input.audio)) return;
+    const shouldSpeak = isConversingRef.current || voiceReplyRef.current;
+    const controller = new AbortController();
+    const isCurrentRequest = () => activeRef.current && requestRef.current === controller && !controller.signal.aborted;
+    if (!activeRef.current || requestRef.current || (!typedQuestion && !input.audio)) return;
+    requestRef.current = controller;
     speech.stopListening();
     voice.stop();
     setQuestion("");
@@ -150,7 +175,8 @@ export function AssistantDialog({
         spoken: shouldSpeak,
         context: buildAssistantContext(spaces, movements, receivables, spaceId),
         history,
-      });
+      }, controller.signal);
+      if (!isCurrentRequest()) return;
       setHistory((current) => [
         ...current,
         ...(input.audio
@@ -158,17 +184,21 @@ export function AssistantDialog({
           : []),
         { role: "assistant", text: reply.answer, followUps: reply.followUps },
       ]);
-      if (shouldSpeak)
+      if (isConversingRef.current || voiceReplyRef.current)
         voice.speak(reply.answer, {
           onEnd: () => {
-            if (isConversingRef.current) listenAgain();
+            if (activeRef.current && isConversingRef.current) listenAgain();
           },
         });
     } catch (failure) {
+      if (!isCurrentRequest()) return;
       setError(failure instanceof Error ? failure.message : "Sin respuesta.");
       endConversation();
     } finally {
-      setIsThinking(false);
+      if (isCurrentRequest()) {
+        requestRef.current = null;
+        setIsThinking(false);
+      }
     }
   }
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -181,9 +211,17 @@ export function AssistantDialog({
       title="Tu asistente financiero"
       onClose={() => {
         endConversation();
+        activeRef.current = false;
         onClose();
       }}
     >
+      <p className="muted small">
+        {aiStatusFailed
+          ? "No se pudo comprobar el modo de IA. Puedes intentar una pregunta."
+          : aiMode === "demo"
+          ? "Modo de ejemplo: las respuestas no analizan tus registros."
+          : "Las preguntas y un resumen de tus registros se envían al proveedor de IA configurado."}
+      </p>
       {canConverse && (
         <section className={`voice-orb-panel ${phase}`} aria-live="polite">
           <button
@@ -281,9 +319,7 @@ export function AssistantDialog({
         <div ref={listEndRef} />
       </div>
       {(error || recorder.recorderError) && (
-        <p className="error" role="alert">
-          {error || recorder.recorderError}
-        </p>
+        <MessageDialog tone="error" message={error || recorder.recorderError} />
       )}
       <form className="chat-form" onSubmit={handleSubmit}>
         <input

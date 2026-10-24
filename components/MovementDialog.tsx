@@ -1,7 +1,9 @@
 "use client";
+import { MessageDialog } from "./MessageDialog";
 import { useState, type FormEvent } from "react";
-import { demoDate } from "@/lib/mockData";
+import { getBusinessDateTime, getBusinessDay, isValidBusinessDay } from "@/lib/businessDate";
 import { displayDate, displayTime, localDate, money } from "@/lib/finance";
+import { isCollectionMovement } from "@/lib/demoTransactions";
 import type { Movement, Space } from "@/lib/types";
 import { useDemo } from "./DemoProvider";
 import { Dialog } from "./Dialog";
@@ -22,6 +24,7 @@ export function MovementDialog({
   onSaved?: () => void;
 }) {
   const { updateMovement } = useDemo();
+  const isCollection = movement ? isCollectionMovement(movement) : false;
   const [description, setDescription] = useState(movement?.description ?? "");
   const [amount, setAmount] = useState(
     movement ? String(movement.amountMinor / 100) : "",
@@ -29,7 +32,7 @@ export function MovementDialog({
   const [date, setDate] = useState(
     movement
       ? `${localDate(movement.occurredAt)}T${displayTime(movement.occurredAt)}`
-      : `${demoDate}T13:00`,
+      : getBusinessDateTime(),
   );
   const [editing, setEditing] = useState(!movement);
   const [dirty, setDirty] = useState(false);
@@ -41,6 +44,10 @@ export function MovementDialog({
     if (saving) return;
     if (!/^\d+(\.\d{1,2})?$/.test(normalizedAmount)) {
       setError("Escribe un importe con hasta dos decimales.");
+      return;
+    }
+    if (!isValidBusinessDay(date.slice(0, 10)) || date.slice(0, 10) > getBusinessDay()) {
+      setError("Elige una fecha válida hasta hoy.");
       return;
     }
     setSaving(true);
@@ -97,9 +104,13 @@ export function MovementDialog({
               </>
             )}
           </dl>
-          <button className="button primary" onClick={() => setEditing(true)}>
-            Editar movimiento
-          </button>
+          {isCollection ? (
+            <p className="muted">Este cobro está vinculado a un fiado. Su edición está deshabilitada para conservar el saldo correcto.</p>
+          ) : (
+            <button className="button primary" onClick={() => setEditing(true)}>
+              Editar movimiento
+            </button>
+          )}
         </>
       ) : (
         <form onSubmit={handleSave} onChange={() => setDirty(true)}>
@@ -132,14 +143,13 @@ export function MovementDialog({
             <input
               required
               type="datetime-local"
+              max={`${getBusinessDay()}T23:59`}
               value={date}
               onChange={(event) => setDate(event.target.value)}
             />
           </label>
           {error && (
-            <p className="error" role="alert">
-              {error}
-            </p>
+            <MessageDialog tone="error" message={error} onClose={() => setError("")} />
           )}
           <button className="button primary" disabled={saving}>
             {saving

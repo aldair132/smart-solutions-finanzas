@@ -2,7 +2,7 @@
 import { useState } from "react";
 import type { Movement, Space } from "@/lib/types";
 import { displayDate, displayTime, localDate, money } from "@/lib/finance";
-import { demoDate } from "@/lib/mockData";
+import { useCurrentDay } from "@/hooks/useCurrentDay";
 import { Icon } from "./Icon";
 import { MovementDialog } from "./MovementDialog";
 export function MovementList({
@@ -12,6 +12,7 @@ export function MovementList({
   movements: Movement[];
   space: Space;
 }) {
+  const today = useCurrentDay();
   const [selected, setSelected] = useState<Movement | null>(null);
   if (!movements.length)
     return (
@@ -37,7 +38,7 @@ export function MovementList({
               <strong>{movement.description}</strong>
               <small>
                 {movement.kind === "income" ? "Venta" : "Gasto"} ·{" "}
-                {localDate(movement.occurredAt) !== demoDate
+                {localDate(movement.occurredAt) !== today
                   ? `${displayDate(movement.occurredAt)} · `
                   : ""}
                 {displayTime(movement.occurredAt)}

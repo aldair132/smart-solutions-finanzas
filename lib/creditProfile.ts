@@ -1,5 +1,5 @@
 import { displayDate, localDate, totals } from "./finance";
-import { demoDate } from "./mockData";
+import { getBusinessDay } from "./businessDate";
 import type { Movement } from "./types";
 
 export type CreditFactor = {
@@ -16,6 +16,9 @@ export type MonthlySummary = {
 };
 export type CreditLevel = "initial" | "progress" | "ready";
 export type CreditProfile = {
+  asOfDate: string;
+  hasHistory: boolean;
+  hasTrendComparison: boolean;
   windowDays: number;
   activeDays: number;
   avgMonthlyIncomeMinor: number;
@@ -37,11 +40,11 @@ const dayMs = 86_400_000;
 // Cuota referencial: 30 % del resultado mensual, criterio prudente usado en microfinanzas.
 const paymentCapacityShare = 0.3;
 
-function daysAgo(movement: Movement) {
+function daysAgo(movement: Movement, referenceDay: string) {
   const movementDay = Date.parse(
     `${localDate(movement.occurredAt)}T12:00:00-05:00`,
   );
-  const today = Date.parse(`${demoDate}T12:00:00-05:00`);
+  const today = Date.parse(`${referenceDay}T12:00:00-05:00`);
   return Math.round((today - movementDay) / dayMs);
 }
 function clamp(value: number, min = 0, max = 1) {
@@ -50,11 +53,11 @@ function clamp(value: number, min = 0, max = 1) {
 function sumIncome(movements: Movement[]) {
   return totals(movements).income;
 }
-function calculateStability(windowMovements: Movement[]) {
+function calculateStability(windowMovements: Movement[], referenceDay: string) {
   const weeklyIncome = Array.from({ length: 12 }, (_, week) =>
     sumIncome(
       windowMovements.filter(
-        (movement) => Math.floor(daysAgo(movement) / 7) === week,
+        (movement) => Math.floor(daysAgo(movement, referenceDay) / 7) === week,
       ),
     ),
   );
@@ -66,16 +69,16 @@ function calculateStability(windowMovements: Movement[]) {
     weeklyIncome.length;
   return Math.round(clamp(1 - Math.sqrt(variance) / average) * 100);
 }
-function buildMonths(windowMovements: Movement[]): MonthlySummary[] {
+function buildMonths(windowMovements: Movement[], referenceDay: string): MonthlySummary[] {
   return [2, 1, 0].map((monthIndex) => {
     const monthMovements = windowMovements.filter(
-      (movement) => Math.floor(daysAgo(movement) / 30) === monthIndex,
+      (movement) => Math.floor(daysAgo(movement, referenceDay) / 30) === monthIndex,
     );
     const firstDay = new Date(
-      Date.parse(`${demoDate}T12:00:00-05:00`) - (monthIndex * 30 + 29) * dayMs,
+      Date.parse(`${referenceDay}T12:00:00-05:00`) - (monthIndex * 30 + 29) * dayMs,
     );
     const lastDay = new Date(
-      Date.parse(`${demoDate}T12:00:00-05:00`) - monthIndex * 30 * dayMs,
+      Date.parse(`${referenceDay}T12:00:00-05:00`) - monthIndex * 30 * dayMs,
     );
     const summary = totals(monthMovements);
     return {
@@ -92,25 +95,27 @@ function getLevel(score: number): CreditLevel {
   return "initial";
 }
 
-export function calculateCreditProfile(movements: Movement[]): CreditProfile {
+export function calculateCreditProfile(movements: Movement[], referenceDay = getBusinessDay()): CreditProfile {
   const windowMovements = movements.filter(
     (movement) =>
       movement.kind !== "transfer" &&
-      daysAgo(movement) >= 0 &&
-      daysAgo(movement) < windowDays,
+      daysAgo(movement, referenceDay) >= 0 &&
+      daysAgo(movement, referenceDay) < windowDays,
   );
   const activeDays = new Set(
     windowMovements.map((movement) => localDate(movement.occurredAt)),
   ).size;
-  const oldestDaysAgo = Math.max(0, ...windowMovements.map(daysAgo));
+  const oldestDaysAgo = Math.max(0, ...windowMovements.map((movement) => daysAgo(movement, referenceDay)));
   const summary = totals(windowMovements);
-  const months = buildMonths(windowMovements);
+  const months = buildMonths(windowMovements, referenceDay);
   const recentIncome = months[2].incomeMinor;
   const previousIncome = months[1].incomeMinor;
+  const hasHistory = windowMovements.length > 0;
+  const hasTrendComparison = previousIncome > 0;
   const marginPercent = summary.income
     ? Math.round((summary.result / summary.income) * 100)
     : 0;
-  const stabilityPercent = calculateStability(windowMovements);
+  const stabilityPercent = calculateStability(windowMovements, referenceDay);
   const trendPercent = previousIncome
     ? Math.round(((recentIncome - previousIncome) / previousIncome) * 100)
     : 0;
@@ -144,8 +149,10 @@ export function calculateCreditProfile(movements: Movement[]): CreditProfile {
     },
     {
       label: "Tendencia",
-      detail: `${trendPercent >= 0 ? "+" : ""}${trendPercent} % frente al mes anterior`,
-      points: Math.round(clamp((trendPercent + 20) / 20) * 10),
+      detail: hasTrendComparison
+        ? `${trendPercent >= 0 ? "+" : ""}${trendPercent} % frente al periodo anterior de 30 días`
+        : "Aún no hay ventas del periodo anterior para comparar",
+      points: hasTrendComparison ? Math.round(clamp((trendPercent + 20) / 20) * 10) : 0,
       maxPoints: 10,
     },
     {
@@ -156,13 +163,16 @@ export function calculateCreditProfile(movements: Movement[]): CreditProfile {
     },
     {
       label: "Antigüedad del historial",
-      detail: `${oldestDaysAgo + 1} días de historial`,
-      points: Math.round(clamp((oldestDaysAgo + 1) / windowDays) * 10),
+      detail: `${hasHistory ? oldestDaysAgo + 1 : 0} días de historial`,
+      points: hasHistory ? Math.round(clamp((oldestDaysAgo + 1) / windowDays) * 10) : 0,
       maxPoints: 10,
     },
   ];
   const score = factors.reduce((sum, factor) => sum + factor.points, 0);
   return {
+    asOfDate: referenceDay,
+    hasHistory,
+    hasTrendComparison,
     windowDays,
     activeDays,
     avgMonthlyIncomeMinor: Math.round(summary.income / 3),

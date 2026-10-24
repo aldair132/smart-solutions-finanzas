@@ -62,11 +62,14 @@ export function useNaturalVoice({ useNeural }: { useNeural: boolean }) {
   const fillerRef = useRef<Promise<void> | null>(null);
   const fillerControllerRef = useRef<AbortController | null>(null);
   const urlsRef = useRef<string[]>([]);
+  const activeRef = useRef(true);
   useEffect(() => {
     const urls = urlsRef.current;
+    activeRef.current = true;
     // Algunos navegadores cargan la lista de voces de forma diferida.
     if ("speechSynthesis" in window) window.speechSynthesis.getVoices();
     return () => {
+      activeRef.current = false;
       abortRef.current?.abort();
       fillerControllerRef.current?.abort();
       audioRef.current?.pause();
@@ -115,7 +118,7 @@ export function useNaturalVoice({ useNeural }: { useNeural: boolean }) {
   }
   // Frase corta pregrabada ("A ver, déjame revisar…") mientras la IA piensa.
   function playFiller() {
-    if (!useNeural || !isNeuralAvailable()) return;
+    if (!activeRef.current || !useNeural || !isNeuralAvailable()) return;
     const controller = new AbortController();
     const clip = fillerClips[Math.floor(Math.random() * fillerClips.length)];
     stopPlayback();
@@ -123,6 +126,7 @@ export function useNaturalVoice({ useNeural }: { useNeural: boolean }) {
     fillerRef.current = playSource(clip, controller).catch(() => undefined);
   }
   async function speak(text: string, { onEnd }: SpeakOptions = {}) {
+    if (!activeRef.current) return;
     const pendingFiller = fillerRef.current;
     const controller = new AbortController();
     const parts = prepareForSpeech(text);
@@ -134,6 +138,7 @@ export function useNaturalVoice({ useNeural }: { useNeural: boolean }) {
       onEnd?.();
     };
     const fallBackToBrowser = () => {
+      if (!activeRef.current || controller.signal.aborted) return;
       setStatus("speaking");
       speakWithBrowser(parts.join(" "), finish);
     };
@@ -149,12 +154,13 @@ export function useNaturalVoice({ useNeural }: { useNeural: boolean }) {
       return;
     }
     try {
-      const pendingAudio = parts.map((part) =>
-        synthesizeSpeech(part, controller.signal),
-      );
-      await pendingFiller;
-      for (const pending of pendingAudio) {
-        const url = URL.createObjectURL(await pending);
+      const [, audioBlobs] = await Promise.all([
+        pendingFiller,
+        Promise.all(parts.map((part) => synthesizeSpeech(part, controller.signal))),
+      ]);
+      for (const blob of audioBlobs) {
+        if (!activeRef.current || controller.signal.aborted) return;
+        const url = URL.createObjectURL(blob);
         urlsRef.current.push(url);
         setStatus("speaking");
         await playSource(url, controller);

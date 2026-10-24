@@ -26,6 +26,7 @@ type DraftCardProps = {
   fallbackDate: string;
   isExpanded: boolean;
   collectionHint: string | null;
+  collectionCustomers: string[];
   onToggle: () => void;
   onChange: (changes: Partial<EditableDraft>) => void;
   onRemove: () => void;
@@ -75,6 +76,7 @@ export function DraftCard({
   fallbackDate,
   isExpanded,
   collectionHint,
+  collectionCustomers,
   onToggle,
   onChange,
   onRemove,
@@ -195,23 +197,39 @@ export function DraftCard({
             </div>
           )}
           {!isPersonal && isCreditKind(draft.kind) && (
-            <Field label="Cliente">
-              <input
-                maxLength={60}
-                value={draft.customer}
-                placeholder="Ej.: Sra. Carmen"
-                onChange={(event) => onChange({ customer: event.target.value })}
-                {...fieldState("customer")}
-              />
-              <FieldMessage
-                id={messageId("customer")}
-                field="customer"
-                validation={validation}
-              />
-              {collectionHint && (
-                <small className="muted">{collectionHint}</small>
+            <>
+              <Field label="Cliente">
+                <input
+                  maxLength={60}
+                  value={draft.customer}
+                  placeholder="Ej.: Sra. Carmen"
+                  onChange={(event) => onChange({ customer: event.target.value })}
+                  {...fieldState("customer")}
+                />
+                <FieldMessage
+                  id={messageId("customer")}
+                  field="customer"
+                  validation={validation}
+                />
+                {collectionHint && (
+                  <small className="muted">{collectionHint}</small>
+                )}
+              </Field>
+              {draft.kind === "credit_collection" && collectionCustomers.length > 0 && (
+                <span className="example-chips" role="group" aria-label="Clientes con fiados pendientes">
+                  {collectionCustomers.map((customer) => (
+                    <button
+                      type="button"
+                      key={customer}
+                      aria-pressed={draft.customer === customer}
+                      onClick={() => onChange({ customer })}
+                    >
+                      {customer}
+                    </button>
+                  ))}
+                </span>
               )}
-            </Field>
+            </>
           )}
           <Field label="Concepto">
             <input

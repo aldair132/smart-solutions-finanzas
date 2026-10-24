@@ -1,4 +1,5 @@
 "use client";
+import { MessageDialog } from "./MessageDialog";
 import Image from "next/image";
 import { useRef, useState, type FormEvent } from "react";
 import { useAudioRecorder } from "@/hooks/useAudioRecorder";
@@ -7,17 +8,17 @@ import { compressImage, extractMovementDrafts } from "@/lib/aiService";
 import {
   createEmptyDraft,
   hasErrors,
-  isCreditKind,
   needsReview,
   parseAmountMinor,
   summarizeDrafts,
   toEditableDrafts,
   validateDraft,
+  validateDate,
   type EditableDraft,
 } from "@/lib/draftReview";
 import { money } from "@/lib/finance";
-import { demoDate } from "@/lib/mockData";
-import { findOpenReceivable } from "@/lib/receivables";
+import { getBusinessDateTime, getBusinessDay } from "@/lib/businessDate";
+import { findOpenReceivables, getCollectionCustomers, getReceivableBalance } from "@/lib/receivables";
 import type { AiMode, Space } from "@/lib/types";
 import { useDemo } from "./DemoProvider";
 import { Dialog } from "./Dialog";
@@ -55,9 +56,7 @@ export function AiCaptureDialog({
   onSaved: (count: number) => void;
 }) {
   const {
-    addMovements,
-    addReceivables,
-    collectReceivable,
+    saveCapture,
     receivables,
     supportsAudio,
   } = useDemo();
@@ -68,7 +67,7 @@ export function AiCaptureDialog({
   const [result, setResult] = useState<{ mode: AiMode; notes: string } | null>(
     null,
   );
-  const [date, setDate] = useState(`${demoDate}T13:00`);
+  const [date, setDate] = useState(getBusinessDateTime());
   const [expandedKeys, setExpandedKeys] = useState<Set<string>>(new Set());
   const [isSaving, setIsSaving] = useState(false);
   const reviewListRef = useRef<HTMLDivElement>(null);
@@ -265,6 +264,11 @@ export function AiCaptureDialog({
       setError("No hay movimientos para guardar.");
       return;
     }
+    const dateError = validateDate(date.split("T")[0]).errors.date;
+    if (dateError) {
+      setError(dateError);
+      return;
+    }
     const invalidKeys = drafts
       .filter((draft) => hasErrors(validateDraft(draft, { isPersonal })))
       .map((draft) => draft.key);
@@ -280,6 +284,10 @@ export function AiCaptureDialog({
       onSaved(drafts.length);
       onClose();
     } catch (failure) {
+      setExpandedKeys((current) => new Set([
+        ...current,
+        ...drafts.filter((draft) => draft.kind === "credit_collection").map((draft) => draft.key),
+      ]));
       setError(
         failure instanceof Error ? failure.message : "No se pudo guardar.",
       );
@@ -293,62 +301,26 @@ export function AiCaptureDialog({
     return `${draft.date || defaultDay}T${defaultTime}:00-05:00`;
   }
   function saveDrafts(confirmedDrafts: EditableDraft[]) {
-    const movements = confirmedDrafts.filter(
-      (draft) => isPersonal || !isCreditKind(draft.kind),
-    );
-    addMovements(
-      movements.map((draft) => ({
-        spaceId: space.id,
-        kind: isPersonal || draft.kind === "expense" ? "expense" : "income",
+    saveCapture({
+      spaceId: space.id,
+      source: method,
+      entries: confirmedDrafts.map((draft) => ({
+        kind: draft.kind,
+        customer: draft.customer,
         amountMinor: parseAmountMinor(draft.amount)!,
         description: draft.description,
         category: draft.category,
         occurredAt: getOccurredAt(draft),
-        source: method,
       })),
-    );
-    if (isPersonal) return;
-    addReceivables(
-      confirmedDrafts
-        .filter((draft) => draft.kind === "credit_sale")
-        .map((draft) => ({
-          spaceId: space.id,
-          // Reutiliza el nombre ya guardado ("doña Carmen" → "Sra. Carmen").
-          customer:
-            findOpenReceivable(receivables, space.id, draft.customer)
-              ?.customer ?? draft.customer,
-          description: draft.description,
-          amountMinor: parseAmountMinor(draft.amount)!,
-          createdAt: getOccurredAt(draft),
-        })),
-    );
-    for (const draft of confirmedDrafts) {
-      if (draft.kind !== "credit_collection") continue;
-      const receivable = findOpenReceivable(
-        receivables,
-        space.id,
-        draft.customer,
-      );
-      if (receivable)
-        collectReceivable({
-          receivableId: receivable.id,
-          amountMinor: parseAmountMinor(draft.amount)!,
-          occurredAt: getOccurredAt(draft),
-          source: method,
-        });
-      else
-        addMovements([
-          {
-            spaceId: space.id,
-            kind: "income",
-            amountMinor: parseAmountMinor(draft.amount)!,
-            description: `Cobro de fiado: ${draft.customer}`,
-            category: "Ventas",
-            occurredAt: getOccurredAt(draft),
-            source: method,
-          },
-        ]);
-    }
+    });
+  }
+  function getCollectionHint(draft: EditableDraft) {
+    const pending = findOpenReceivables(receivables, space.id, draft.customer);
+    const balanceMinor = pending.reduce((sum, item) => sum + getReceivableBalance(item), 0);
+    if (draft.kind !== "credit_collection") return null;
+    if (!pending.length)
+      return "Elige un cliente pendiente o revisa su nombre completo.";
+    return `Saldo: ${money(balanceMinor)} · Se cobra primero el fiado más antiguo.`;
   }
   return (
     <Dialog
@@ -358,6 +330,9 @@ export function AiCaptureDialog({
       dirty={isDirty}
     >
       <p className="dialog-space">{space.name} · PEN</p>
+      <p className="muted small">
+        Con IA configurada, el audio o las fotos se envían a su proveedor para analizarlos.
+      </p>
       {!drafts && method === "voice" && (
         <div className="ai-capture">
           {supportsAudio ? (
@@ -407,9 +382,7 @@ export function AiCaptureDialog({
             </p>
           )}
           {(recorder.recorderError || speech.speechError) && (
-            <p className="error" role="alert">
-              {recorder.recorderError || speech.speechError}
-            </p>
+            <MessageDialog tone="error" message={recorder.recorderError || speech.speechError} />
           )}
           <label>
             {supportsAudio
@@ -613,13 +586,8 @@ export function AiCaptureDialog({
                 showDate
                 fallbackDate={date.slice(0, 10)}
                 isExpanded={expandedKeys.has(draft.key)}
-                collectionHint={
-                  draft.kind === "credit_collection" && draft.customer.trim()
-                    ? findOpenReceivable(receivables, space.id, draft.customer)
-                      ? "Se descontará de su fiado pendiente."
-                      : "No tiene fiado pendiente: se registrará como cobro."
-                    : null
-                }
+                collectionHint={getCollectionHint(draft)}
+                collectionCustomers={getCollectionCustomers(receivables, space.id)}
                 onToggle={() => toggleExpanded(draft.key)}
                 onChange={(changes) => updateDraft(draft.key, changes)}
                 onRemove={() => removeDraft(draft.key)}
@@ -666,6 +634,7 @@ export function AiCaptureDialog({
               <input
                 required
                 type="datetime-local"
+                max={`${getBusinessDay()}T23:59`}
                 value={date}
                 onChange={(event) => setDate(event.target.value)}
               />
@@ -680,9 +649,7 @@ export function AiCaptureDialog({
               </p>
             )}
             {error && (
-              <p className="error" role="alert">
-                {error}
-              </p>
+              <MessageDialog tone="error" message={error} onClose={() => setError("")} />
             )}
             <button
               className="button primary"
@@ -706,9 +673,7 @@ export function AiCaptureDialog({
         </form>
       )}
       {!drafts && error && (
-        <p className="error" role="alert">
-          {error}
-        </p>
+        <MessageDialog tone="error" message={error} onClose={() => setError("")} />
       )}
     </Dialog>
   );

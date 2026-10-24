@@ -1,9 +1,23 @@
-import { initialState } from "./mockData";
+import { fixtureDate, initialState } from "./mockData";
+import { getBusinessDay, shiftBusinessTimestamp } from "./businessDate";
 import type { DemoState, Movement, Receivable, Space, User } from "./types";
 
-export function loadDemo(): DemoState {
+export function loadDemo(today = getBusinessDay()): DemoState {
+  const state = structuredClone(initialState);
   // TODO(BACKEND): leer sesión, espacios y movimientos autorizados; sin entrada, salida DemoState. API por acordar; propagar errores sin sustituir por ceros.
-  return structuredClone(initialState);
+  return {
+    ...state,
+    demoSeedDate: today,
+    movements: state.movements.map((movement) => ({
+      ...movement,
+      occurredAt: shiftBusinessTimestamp(movement.occurredAt, fixtureDate, today),
+    })),
+    receivables: state.receivables.map((receivable) => ({
+      ...receivable,
+      createdAt: shiftBusinessTimestamp(receivable.createdAt, fixtureDate, today),
+      ...(receivable.paidAt ? { paidAt: shiftBusinessTimestamp(receivable.paidAt, fixtureDate, today) } : {}),
+    })),
+  };
 }
 export function saveSpace(
   spaces: Space[],
@@ -85,6 +99,31 @@ export function saveReceivable(
 // v2: agrega fiados; una demo guardada con v1 vuelve a los datos de ejemplo.
 const storageKey = "smart-solutions-demo-v2";
 
+// Migra una sola vez los ejemplos intactos del reloj fijo anterior.
+// Las filas creadas o editadas por el usuario mantienen su fecha original.
+export function migrateDemoDates(state: DemoState, today = getBusinessDay()): DemoState {
+  const fresh = loadDemo(today);
+  const matchesFixture = (item: Movement | Receivable, fixture: Movement | Receivable | undefined) =>
+    fixture !== undefined && JSON.stringify(item) === JSON.stringify(fixture);
+  if (state.demoSeedDate) return state;
+  return {
+    ...state,
+    demoSeedDate: today,
+    movements: state.movements.map((movement) => {
+      const fixture = initialState.movements.find((item) => item.id === movement.id);
+      return matchesFixture(movement, fixture)
+        ? fresh.movements.find((item) => item.id === movement.id)!
+        : movement;
+    }),
+    receivables: state.receivables.map((receivable) => {
+      const fixture = initialState.receivables.find((item) => item.id === receivable.id);
+      return matchesFixture(receivable, fixture)
+        ? fresh.receivables.find((item) => item.id === receivable.id)!
+        : receivable;
+    }),
+  };
+}
+
 export function loadStoredDemo(): DemoState | null {
   // TODO(BACKEND): reemplazar por la lectura autenticada de loadDemo; localStorage solo conserva la demo en este navegador.
   try {
@@ -93,7 +132,7 @@ export function loadStoredDemo(): DemoState | null {
     const state = JSON.parse(stored) as DemoState;
     if (!Array.isArray(state.spaces) || !Array.isArray(state.movements))
       return null;
-    return { ...state, receivables: state.receivables ?? [] };
+    return migrateDemoDates({ ...state, receivables: state.receivables ?? [] });
   } catch {
     return null;
   }

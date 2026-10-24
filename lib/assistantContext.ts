@@ -1,7 +1,7 @@
 import { calculateAnalytics } from "./analytics";
 import { calculateCreditProfile } from "./creditProfile";
 import { money, selectMovements, totals } from "./finance";
-import { demoDate } from "./mockData";
+import { getBusinessDay } from "./businessDate";
 import { selectReceivables, summarizeReceivables } from "./receivables";
 import type { Movement, Period, Receivable, Space } from "./types";
 
@@ -81,7 +81,7 @@ export function buildAssistantContext(
   currentSpaceId: string,
 ) {
   return {
-    fechaHoy: demoDate,
+    fechaHoy: getBusinessDay(),
     moneda: "PEN",
     espacioActual: spaces.find((space) => space.id === currentSpaceId)?.name,
     espacios: spaces.map((space) => {
@@ -118,11 +118,12 @@ export function buildAssistantContext(
             ? describeAnalytics(spaceMovements)
             : undefined,
         perfilCredito: profile && {
-          puntaje: profile.score,
+          historialDisponible: profile.hasHistory,
+          puntaje: profile.hasHistory ? profile.score : null,
           ventasPromedioMensual: money(profile.avgMonthlyIncomeMinor),
           margenPorcentaje: profile.marginPercent,
           diasConRegistro: profile.activeDays,
-          cuotaReferencial: money(profile.paymentCapacityMinor),
+          cuotaReferencial: profile.hasHistory ? money(profile.paymentCapacityMinor) : null,
         },
       };
     }),

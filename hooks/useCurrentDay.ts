@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { localDate } from "@/lib/finance";
+import { getBusinessDay } from "@/lib/businessDate";
 
 export function useCurrentDay() {
   const [today, setToday] = useState<string | null>(null);
@@ -11,7 +11,7 @@ export function useCurrentDay() {
 
     function updateDay() {
       const now = new Date();
-      const day = localDate(now.toISOString());
+      const day = getBusinessDay(now);
       const nextMidnight = Date.parse(`${day}T00:00:00-05:00`) + 86_400_000;
       clearTimeout(timer);
       setToday(day);

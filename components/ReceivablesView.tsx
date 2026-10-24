@@ -1,8 +1,9 @@
 "use client";
+import { MessageDialog } from "./MessageDialog";
 import Link from "next/link";
 import { useState, type FormEvent } from "react";
 import { displayDate, money } from "@/lib/finance";
-import { demoDate } from "@/lib/mockData";
+import { getBusinessTimestamp } from "@/lib/businessDate";
 import {
   getDaysOpen,
   getReceivableBalance,
@@ -60,7 +61,8 @@ export function ReceivablesView({ spaceId }: { spaceId: string }) {
           <span>Por cobrar</span>
           <strong>{money(summary.pendingMinor)}</strong>
           <small>
-            {summary.pendingCount} cliente
+            {summary.pendingCount} fiado
+            {summary.pendingCount === 1 ? "" : "s"} pendiente
             {summary.pendingCount === 1 ? "" : "s"}
           </small>
         </div>
@@ -82,9 +84,7 @@ export function ReceivablesView({ spaceId }: { spaceId: string }) {
           Anotar fiado
         </button>
       </div>
-      <p role="status" className="status-message">
-        {notice}
-      </p>
+      {notice && <MessageDialog message={notice} onClose={() => setNotice("")} />}
       {!pending.length && (
         <div className="empty-state">
           <Icon name="check" />
@@ -153,7 +153,7 @@ export function ReceivablesView({ spaceId }: { spaceId: string }) {
             collectReceivable({
               receivableId: collecting.id,
               amountMinor,
-              occurredAt: `${demoDate}T13:00:00-05:00`,
+              occurredAt: getBusinessTimestamp(),
               source: "text",
             });
             setNotice(`Cobro de ${money(amountMinor)} registrado.`);
@@ -169,7 +169,7 @@ export function ReceivablesView({ spaceId }: { spaceId: string }) {
               {
                 ...input,
                 spaceId: space.id,
-                createdAt: `${demoDate}T13:00:00-05:00`,
+                createdAt: getBusinessTimestamp(),
               },
             ]);
             setNotice(`Fiado a ${input.customer} anotado.`);
@@ -200,7 +200,11 @@ function CollectDialog({
       setError(`Escribe un importe entre S/ 0.01 y ${money(balanceMinor)}.`);
       return;
     }
-    onConfirm(amountMinor);
+    try {
+      onConfirm(amountMinor);
+    } catch (failure) {
+      setError(failure instanceof Error ? failure.message : "No se pudo registrar el cobro.");
+    }
   }
   return (
     <Dialog title={`Cobrar a ${receivable.customer}`} onClose={onClose}>
@@ -216,9 +220,7 @@ function CollectDialog({
           />
         </label>
         {error && (
-          <p className="error" role="alert">
-            {error}
-          </p>
+          <MessageDialog tone="error" message={error} onClose={() => setError("")} />
         )}
         <button className="button primary">Registrar cobro</button>
       </form>
@@ -287,9 +289,7 @@ function NewReceivableDialog({
           />
         </label>
         {error && (
-          <p className="error" role="alert">
-            {error}
-          </p>
+          <MessageDialog tone="error" message={error} onClose={() => setError("")} />
         )}
         <button className="button primary">Guardar fiado</button>
       </form>

@@ -1,4 +1,5 @@
 "use client";
+import { MessageDialog } from "./MessageDialog";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { useDemo } from "./DemoProvider";
@@ -19,7 +20,7 @@ const panelTitles: Record<ProfilePanel, string> = {
   terms: "Términos y condiciones",
   privacy: "Política de privacidad",
   settings: "Configuración del espacio",
-  logout: "Cerrar sesión",
+  logout: "Salir y reiniciar demo",
 };
 export function ProfileView({ spaceId }: { spaceId: string }) {
   const {
@@ -59,7 +60,7 @@ export function ProfileView({ spaceId }: { spaceId: string }) {
       if (panel === "customer") updateUser(name);
       else updateSpace(name, spaceId);
       setPanel(null);
-      setNotice("Cambios guardados en la demostración.");
+      setNotice("Cambios aplicados a esta demo.");
     } catch (failure) {
       setError(
         failure instanceof Error ? failure.message : "No se pudo guardar.",
@@ -137,9 +138,7 @@ export function ProfileView({ spaceId }: { spaceId: string }) {
             {option("settings", "settings", `Configuración de ${space.name}`)}
           </div>
           <div className="option-group">{option("logout", "logout")}</div>
-          <p role="status" className="status-message">
-            {notice}
-          </p>
+          {notice && <MessageDialog message={notice} onClose={() => setNotice("")} />}
         </section>
       </div>
       {panel && (
@@ -169,9 +168,7 @@ export function ProfileView({ spaceId }: { spaceId: string }) {
                 />
               </label>
               {error && (
-                <p role="alert" className="error">
-                  {error}
-                </p>
+                <MessageDialog tone="error" message={error} onClose={() => setError("")} />
               )}
               <button className="button primary">Guardar cambios</button>
             </form>
@@ -223,8 +220,9 @@ export function ProfileView({ spaceId }: { spaceId: string }) {
               </p>
               <h3>¿Se conservan mis cambios?</h3>
               <p>
-                Sí, en este dispositivo. Al salir de la demo vuelven los datos
-                de ejemplo.
+                Se guardan en este navegador si el almacenamiento está disponible.
+                No se sincronizan con otros dispositivos. Al elegir «Salir y
+                reiniciar demo» se restablecen los datos de ejemplo.
               </p>
               <p className="extraction-box">Canal de contacto pendiente.</p>
             </div>
@@ -242,13 +240,20 @@ export function ProfileView({ spaceId }: { spaceId: string }) {
                 El contenido aprobado estará disponible cuando se definan las
                 condiciones del servicio y el tratamiento real de los datos.
               </p>
+              {panel === "privacy" && (
+                <p className="muted">
+                  Los registros de esta demo se guardan localmente. Al usar la IA
+                  configurada, se envían audio, imágenes o un resumen de tus
+                  registros a su proveedor para procesarlos.
+                </p>
+              )}
             </>
           )}
           {panel === "logout" && (
             <>
               <p className="muted">
-                Estás en modo demostración. Al salir se descartarán todos los
-                cambios temporales.
+                Se borrarán los cambios de esta demo guardados en este navegador
+                y volverán los datos de ejemplo. Esta acción no se puede deshacer.
               </p>
               <div className="dialog-actions">
                 <button
@@ -264,7 +269,7 @@ export function ProfileView({ spaceId }: { spaceId: string }) {
                     router.push("/demo");
                   }}
                 >
-                  Salir de la demo
+                  Salir y reiniciar
                 </button>
               </div>
             </>

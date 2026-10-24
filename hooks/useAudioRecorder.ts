@@ -69,6 +69,9 @@ export function useAudioRecorder(
   const optionsRef = useRef(options);
   const stopDetectorRef = useRef<(() => void) | null>(null);
   const discardRef = useRef(false);
+  const streamRef = useRef<MediaStream | null>(null);
+  const activeRef = useRef(true);
+  const requestIdRef = useRef(0);
   const [isRecording, setIsRecording] = useState(false);
   const [seconds, setSeconds] = useState(0);
   const [level, setLevel] = useState(0);
@@ -92,19 +95,27 @@ export function useAudioRecorder(
       recorderRef.current.stop();
   }, [seconds]);
   useEffect(() => {
+    activeRef.current = true;
     return () => {
+      activeRef.current = false;
+      requestIdRef.current += 1;
+      discardRef.current = true;
       stopDetectorRef.current?.();
       const recorder = recorderRef.current;
       if (recorder?.state === "recording") {
         recorder.onstop = null;
         recorder.stop();
       }
+      streamRef.current?.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
     };
   }, []);
   async function startRecording(
     startOptions: RecorderOptions = optionsRef.current,
   ) {
-    if (recorderRef.current?.state === "recording") return;
+    if (!activeRef.current || recorderRef.current?.state === "recording") return;
+    const requestId = ++requestIdRef.current;
+    const isCurrent = () => activeRef.current && requestIdRef.current === requestId;
     setRecorderError("");
     try {
       // Filtros del navegador: menos ruido de tienda y voz con volumen parejo.
@@ -116,25 +127,32 @@ export function useAudioRecorder(
           autoGainControl: true,
         },
       });
+      if (!isCurrent()) {
+        stream.getTracks().forEach((track) => track.stop());
+        return;
+      }
+      streamRef.current = stream;
       const recorder = new MediaRecorder(stream);
       const chunks: Blob[] = [];
       discardRef.current = false;
       recorder.ondataavailable = (event) => chunks.push(event.data);
       recorder.onstop = async () => {
+        stream.getTracks().forEach((track) => track.stop());
+        if (streamRef.current === stream) streamRef.current = null;
+        if (!isCurrent()) return;
         stopDetectorRef.current?.();
         stopDetectorRef.current = null;
-        stream.getTracks().forEach((track) => track.stop());
         setIsRecording(false);
         setLevel(0);
         if (discardRef.current) return;
         try {
-          onRecordedRef.current(
-            await convertRecordingToWav(
-              new Blob(chunks, { type: recorder.mimeType }),
-            ),
+          const audio = await convertRecordingToWav(
+            new Blob(chunks, { type: recorder.mimeType }),
           );
+          if (isCurrent() && !discardRef.current) onRecordedRef.current(audio);
         } catch {
-          setRecorderError("No pudimos procesar el audio. Intenta otra vez.");
+          if (isCurrent())
+            setRecorderError("No pudimos procesar el audio. Intenta otra vez.");
         }
       };
       recorderRef.current = recorder;
@@ -152,9 +170,13 @@ export function useAudioRecorder(
       setIsRecording(true);
       recorder.start();
     } catch {
-      setRecorderError(
-        "Permite el uso del micrófono en tu navegador para grabar.",
-      );
+      if (!isCurrent()) return;
+      stopDetectorRef.current?.();
+      stopDetectorRef.current = null;
+      streamRef.current?.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+      setIsRecording(false);
+      setRecorderError("Permite el uso del micrófono en tu navegador para grabar.");
     }
   }
   function stopRecording() {
@@ -163,7 +185,16 @@ export function useAudioRecorder(
   // Detiene sin enviar el audio (por ejemplo, al salir del modo conversación).
   function cancelRecording() {
     discardRef.current = true;
+    requestIdRef.current += 1;
+    stopDetectorRef.current?.();
+    stopDetectorRef.current = null;
     stopRecording();
+    streamRef.current?.getTracks().forEach((track) => track.stop());
+    streamRef.current = null;
+    if (activeRef.current) {
+      setIsRecording(false);
+      setLevel(0);
+    }
   }
   return {
     isRecording,

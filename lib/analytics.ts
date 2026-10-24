@@ -1,5 +1,5 @@
 import { localDate, totals } from "./finance";
-import { demoDate } from "./mockData";
+import { getBusinessDay } from "./businessDate";
 import type { Movement } from "./types";
 
 export type WeekPoint = {
@@ -66,8 +66,8 @@ const monthNames = [
 function toDayNumber(isoDate: string) {
   return Math.round(Date.parse(`${isoDate}T12:00:00Z`) / dayMs);
 }
-function daysAgo(movement: Movement) {
-  return toDayNumber(demoDate) - toDayNumber(localDate(movement.occurredAt));
+function daysAgo(movement: Movement, referenceDay: string) {
+  return toDayNumber(referenceDay) - toDayNumber(localDate(movement.occurredAt));
 }
 function percentChange(current: number, previous: number) {
   return previous ? Math.round(((current - previous) / previous) * 100) : null;
@@ -77,25 +77,25 @@ function formatShortDate(dayNumber: number) {
   return `${date.getUTCDate()} ${monthNames[date.getUTCMonth()]}`;
 }
 
-function buildWeeks(movements: Movement[]): WeekPoint[] {
+function buildWeeks(movements: Movement[], referenceDay: string): WeekPoint[] {
   return Array.from({ length: 12 }, (_, index) => {
     const weekIndex = 11 - index;
     const weekMovements = movements.filter(
-      (movement) => Math.floor(daysAgo(movement) / 7) === weekIndex,
+      (movement) => Math.floor(daysAgo(movement, referenceDay) / 7) === weekIndex,
     );
     const summary = totals(weekMovements);
     return {
-      label: formatShortDate(toDayNumber(demoDate) - weekIndex * 7 - 6),
+      label: formatShortDate(toDayNumber(referenceDay) - weekIndex * 7 - 6),
       incomeMinor: summary.income,
       expenseMinor: summary.expense,
     };
   });
 }
 
-function buildCategories(movements: Movement[]): CategoryShare[] {
+function buildCategories(movements: Movement[], referenceDay: string): CategoryShare[] {
   const byCategory = new Map<string, number>();
   for (const movement of movements) {
-    if (movement.kind !== "expense" || daysAgo(movement) >= 30) continue;
+    if (movement.kind !== "expense" || daysAgo(movement, referenceDay) >= 30) continue;
     const category = movement.category ?? "Otros";
     byCategory.set(
       category,
@@ -113,10 +113,10 @@ function buildCategories(movements: Movement[]): CategoryShare[] {
 }
 
 // Promedio de ventas por día de la semana en las últimas 12 semanas.
-function buildWeekdays(movements: Movement[]): WeekdayPoint[] {
+function buildWeekdays(movements: Movement[], referenceDay: string): WeekdayPoint[] {
   const salesByWeekday = Array.from({ length: 7 }, () => 0);
   for (const movement of movements) {
-    if (movement.kind !== "income" || daysAgo(movement) >= 84) continue;
+    if (movement.kind !== "income" || daysAgo(movement, referenceDay) >= 84) continue;
     const weekday = new Date(
       `${localDate(movement.occurredAt)}T12:00:00Z`,
     ).getUTCDay();
@@ -170,19 +170,19 @@ function buildInsights(summary: Omit<AnalyticsSummary, "insights">) {
   return insights;
 }
 
-export function calculateAnalytics(movements: Movement[]): AnalyticsSummary {
-  const today = new Date(`${demoDate}T12:00:00Z`);
+export function calculateAnalytics(movements: Movement[], referenceDay = getBusinessDay()): AnalyticsSummary {
+  const today = new Date(`${referenceDay}T12:00:00Z`);
   const daysElapsed = today.getUTCDate();
   const daysInMonth = new Date(
     Date.UTC(today.getUTCFullYear(), today.getUTCMonth() + 1, 0),
   ).getUTCDate();
-  const monthPrefix = demoDate.slice(0, 7);
+  const monthPrefix = referenceDay.slice(0, 7);
   const previousMonthDate = new Date(
     Date.UTC(today.getUTCFullYear(), today.getUTCMonth() - 1, 1),
   );
   const previousPrefix = previousMonthDate.toISOString().slice(0, 7);
   const operational = movements.filter(
-    (movement) => movement.kind !== "transfer",
+    (movement) => movement.kind !== "transfer" && daysAgo(movement, referenceDay) >= 0,
   );
   const monthMovements = operational.filter((movement) =>
     localDate(movement.occurredAt).startsWith(monthPrefix),
@@ -195,10 +195,10 @@ export function calculateAnalytics(movements: Movement[]): AnalyticsSummary {
     );
   });
   const lastThirtyDays = operational.filter(
-    (movement) => daysAgo(movement) < 30,
+    (movement) => daysAgo(movement, referenceDay) < 30,
   );
   const previousThirtyDays = operational.filter(
-    (movement) => daysAgo(movement) >= 30 && daysAgo(movement) < 60,
+    (movement) => daysAgo(movement, referenceDay) >= 30 && daysAgo(movement, referenceDay) < 60,
   );
   const month = totals(monthMovements);
   const recent = totals(lastThirtyDays);
@@ -222,10 +222,10 @@ export function calculateAnalytics(movements: Movement[]): AnalyticsSummary {
   const partialSummary = {
     monthMovementCount: monthMovements.length,
     recentMovementCount: operational.filter(
-      (movement) => daysAgo(movement) >= 0 && daysAgo(movement) < 90,
+      (movement) => daysAgo(movement, referenceDay) >= 0 && daysAgo(movement, referenceDay) < 90,
     ).length,
     olderMovementCount: operational.filter(
-      (movement) => daysAgo(movement) >= 90,
+      (movement) => daysAgo(movement, referenceDay) >= 90,
     ).length,
     monthIncomeMinor: month.income,
     monthExpenseMinor: month.expense,
@@ -250,9 +250,9 @@ export function calculateAnalytics(movements: Movement[]): AnalyticsSummary {
     salesDaysPercent: Math.round((salesDays.size / 30) * 100),
     daysElapsed,
     daysInMonth,
-    weeks: buildWeeks(operational),
-    categories: buildCategories(operational),
-    weekdays: buildWeekdays(operational),
+    weeks: buildWeeks(operational, referenceDay),
+    categories: buildCategories(operational, referenceDay),
+    weekdays: buildWeekdays(operational, referenceDay),
     cumulative: buildCumulative(monthMovements, daysElapsed),
   };
   return { ...partialSummary, insights: buildInsights(partialSummary) };

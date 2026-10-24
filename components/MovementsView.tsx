@@ -1,4 +1,5 @@
 "use client";
+import { MessageDialog } from "./MessageDialog";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { useDemo } from "./DemoProvider";
@@ -142,9 +143,7 @@ export function MovementsView({ spaceId }: { spaceId: string }) {
         {filtered.length === 1 ? "registro" : "registros"}
       </p>
       {error && (
-        <p role="alert" className="error">
-          {error}
-        </p>
+        <MessageDialog tone="error" message={error} onClose={() => setError("")} />
       )}
       <div className="history-grid">
         <section>

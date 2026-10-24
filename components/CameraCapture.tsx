@@ -1,4 +1,5 @@
 "use client";
+import { MessageDialog } from "./MessageDialog";
 
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
@@ -109,7 +110,7 @@ export function CameraCapture({ onClose, onUsePhoto }: {
         )}
       </div>
       {!ready && !photo && !error && <p role="status" className="muted">Esperando acceso a la cámara…</p>}
-      {error && <p role="alert" className="error">{error}</p>}
+      {error && <MessageDialog tone="error" message={error} />}
       <div className={styles.actions}>
         {photo ? <>
           <button type="button" className="button outline" onClick={retryCamera}>Repetir</button>

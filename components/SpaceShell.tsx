@@ -5,6 +5,7 @@ import { useState, type ReactNode } from "react";
 import { AssistantDialog } from "./AssistantDialog";
 import { useDemo } from "./DemoProvider";
 import { Icon, type IconName } from "./Icon";
+import { displayDate } from "@/lib/finance";
 import { SpaceSelector } from "./SpaceSelector";
 export function SpaceShell({
   spaceId,
@@ -13,7 +14,7 @@ export function SpaceShell({
   spaceId: string;
   children: ReactNode;
 }) {
-  const { spaces, isReady } = useDemo();
+  const { spaces, isReady, today } = useDemo();
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -84,11 +85,11 @@ export function SpaceShell({
             Mis espacios
           </Link>
         )}
-        <span className="space-date">Viernes, 23 de octubre de 2026</span>
+        <span className="space-date">{today ? displayDate(`${today}T12:00:00-05:00`) : "Hoy"}</span>
       </div>
       {children}
       <p className="demo-note">
-        Datos de ejemplo · Tus cambios se guardan en este dispositivo.
+        Datos de ejemplo · Cambios locales en este navegador.
       </p>
       <button
         className="assistant-fab"

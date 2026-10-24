@@ -1,7 +1,6 @@
 import type { jsPDF } from "jspdf";
 import { creditLevelLabels, type CreditProfile } from "./creditProfile";
 import { money } from "./finance";
-import { demoDate } from "./mockData";
 import {
   contentWidth,
   drawFooters,
@@ -199,6 +198,8 @@ export async function exportCreditPdf(
   receivableSummary: ReceivableSummary,
   previewWindow: Window | null = null,
 ) {
+  if (!profile.hasHistory)
+    throw new Error("Registra ventas o gastos recientes antes de generar el reporte para crédito.");
   const { jsPDF } = await import("jspdf");
   const pdf = new jsPDF();
   const boxWidth = (contentWidth - 9) / 4;
@@ -237,7 +238,9 @@ export async function exportCreditPdf(
     },
     {
       label: "Tendencia último mes",
-      value: `${profile.trendPercent >= 0 ? "+" : ""}${profile.trendPercent} %`,
+      value: profile.hasTrendComparison
+        ? `${profile.trendPercent >= 0 ? "+" : ""}${profile.trendPercent} %`
+        : "Sin comparación",
       accent: profile.trendPercent < 0 ? pdfColors.red : pdfColors.green,
     },
     {
@@ -252,7 +255,7 @@ export async function exportCreditPdf(
   drawHeader(pdf, {
     tag: "Reporte financiero · para la entidad",
     title: "Perfil para solicitud de crédito",
-    subtitle: `${space.name} · últimos ${profile.windowDays} días al ${demoDate} · moneda PEN`,
+    subtitle: `${space.name} · últimos ${profile.windowDays} días al ${profile.asOfDate} · moneda PEN`,
   });
   drawScore(pdf, profile, 42);
   kpis.forEach((kpi, index) => {
@@ -280,7 +283,7 @@ export async function exportCreditPdf(
   );
   await showPdf(
     pdf,
-    `reporte-credito-${space.id}-${demoDate}.pdf`,
+    `reporte-credito-${space.id}-${profile.asOfDate}.pdf`,
     previewWindow,
   );
 }

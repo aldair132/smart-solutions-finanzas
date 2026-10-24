@@ -46,7 +46,14 @@ export function useSpeechRecognition(onFinalText: (text: string) => void) {
     const supported = getRecognitionConstructor() !== null;
     // Se decide tras montar para no desajustar el HTML del servidor.
     queueMicrotask(() => setIsSupported(supported));
-    return () => recognitionRef.current?.abort();
+    return () => {
+      const recognition = recognitionRef.current;
+      if (!recognition) return;
+      recognition.onresult = null;
+      recognition.onerror = null;
+      recognition.onend = null;
+      recognition.abort();
+    };
   }, []);
   function startListening() {
     const RecognitionClass = getRecognitionConstructor();
@@ -87,6 +94,18 @@ export function useSpeechRecognition(onFinalText: (text: string) => void) {
   function stopListening() {
     recognitionRef.current?.stop();
   }
+  function cancelListening() {
+    const recognition = recognitionRef.current;
+    if (recognition) {
+      recognition.onresult = null;
+      recognition.onerror = null;
+      recognition.onend = null;
+      recognition.abort();
+      recognitionRef.current = null;
+    }
+    setIsListening(false);
+    setInterimText("");
+  }
   return {
     isSupported,
     isListening,
@@ -94,5 +113,6 @@ export function useSpeechRecognition(onFinalText: (text: string) => void) {
     speechError,
     startListening,
     stopListening,
+    cancelListening,
   };
 }
