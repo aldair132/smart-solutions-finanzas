@@ -2491,3 +2491,248 @@ form select:focus-visible {
     grid-template-columns: 1fr;
   }
 }
+/* Análisis: indicadores, gráficos y proyecciones */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 12px;
+  margin-top: 24px;
+}
+.kpi {
+  display: grid;
+  gap: 2px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: white;
+}
+.kpi span {
+  font-size: 13px;
+  color: var(--muted);
+}
+.kpi strong {
+  font-size: 22px;
+  font-variant-numeric: tabular-nums;
+}
+.kpi-detail {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+}
+.kpi-detail.up {
+  color: #166534;
+}
+.kpi-detail.down {
+  color: #9b2c2c;
+}
+.analysis-card {
+  display: grid;
+  gap: 10px;
+  align-content: start;
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: white;
+  margin-top: 16px;
+}
+.analysis-card h2 {
+  font-size: 18px;
+}
+.analysis-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+.analysis-grid .analysis-card {
+  margin-top: 16px;
+}
+.analysis-card.wide {
+  grid-column: 1 / -1;
+}
+.forecast-figures {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+.forecast-figures > div {
+  display: grid;
+  gap: 2px;
+  padding: 12px;
+  border-radius: 12px;
+  background: var(--mint);
+}
+.forecast-figures span {
+  font-size: 12px;
+  color: var(--muted);
+}
+.forecast-figures strong {
+  font-size: 19px;
+  font-variant-numeric: tabular-nums;
+}
+.chart {
+  display: grid;
+  gap: 8px;
+}
+.chart-frame {
+  position: relative;
+}
+.chart svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+.chart-axis line {
+  stroke: #e3ebe5;
+  stroke-width: 1;
+}
+.chart-axis text,
+.chart-label {
+  fill: #6b7f72;
+  font-size: 11px;
+}
+.chart-value {
+  fill: var(--ink);
+  font-size: 12px;
+  font-weight: 700;
+}
+.chart-marker {
+  stroke: white;
+  stroke-width: 2;
+}
+.chart-crosshair {
+  stroke: #9fb3a6;
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+}
+.chart-hit {
+  fill: transparent;
+  cursor: pointer;
+}
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.chart-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.chart-legend i {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+}
+.chart-legend i.dashed {
+  width: 16px;
+  height: 0;
+  border-top: 2px dashed;
+  border-radius: 0;
+}
+.chart-tooltip {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  display: grid;
+  gap: 2px;
+  min-width: 150px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--ink);
+  color: white;
+  font-size: 12px;
+  pointer-events: none;
+  z-index: 2;
+}
+.chart-tooltip span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.chart-tooltip i {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+}
+.chart-table summary {
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--green);
+}
+.chart-table table {
+  width: 100%;
+  margin-top: 8px;
+  border-collapse: collapse;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.chart-table th,
+.chart-table td {
+  padding: 6px 8px;
+  border-bottom: 1px solid #edf3ef;
+  text-align: right;
+}
+.chart-table th:first-child,
+.chart-table td:first-child {
+  text-align: left;
+}
+.ranked-bars {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ranked-bars li {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 4px 10px;
+  font-size: 13px;
+}
+.ranked-label {
+  font-weight: 700;
+}
+.ranked-value {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.ranked-track {
+  grid-column: 1 / -1;
+  height: 10px;
+  border-radius: 10px;
+  background: #f1f5f2;
+  overflow: hidden;
+}
+.ranked-track i {
+  display: block;
+  height: 100%;
+  border-radius: 10px;
+}
+.insights ul {
+  margin: 0;
+  padding-left: 20px;
+  list-style: disc;
+  display: grid;
+  gap: 6px;
+}
+@media (max-width: 800px) {
+  .analysis-grid {
+    grid-template-columns: 1fr;
+  }
+  .forecast-figures {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 1000px) {
+  .bottom-tabs {
+    gap: 8px;
+  }
+  .bottom-tabs a {
+    min-width: 0;
+    flex: 1;
+  }
+}

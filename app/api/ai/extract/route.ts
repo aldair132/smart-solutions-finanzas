@@ -4,6 +4,7 @@ import { extractionSchema } from "@/lib/aiSchemas";
 import { demoDate, getDemoExtraction } from "@/lib/mockData";
 import { generateStructured, getAiProvider } from "@/lib/server/aiProvider";
 import { extractionSystemPrompt } from "@/lib/server/prompts";
+import { decideReceiptKind } from "@/lib/server/receiptRules";
 import type { ExtractionResult } from "@/lib/types";
 
 const maxPhotos = 6;
@@ -65,7 +66,14 @@ export async function POST(request: Request) {
       transcript: extraction.transcript,
       notes: extraction.notes,
       drafts: extraction.movements.map((movement) => ({
-        kind: input.spaceType === "personal" ? "expense" : movement.kind,
+        kind:
+          input.spaceType === "personal"
+            ? "expense"
+            : decideReceiptKind(
+                movement.kind,
+                movement.issuer,
+                input.spaceName,
+              ),
         customer: movement.customer?.trim().slice(0, 60) || null,
         description: movement.description.slice(0, 120),
         amountMinor:
@@ -99,20 +107,26 @@ export async function POST(request: Request) {
 }
 
 function buildExtractionPrompt(input: ExtractionRequest) {
+  const today = `Hoy es ${demoDate}.`;
   const spaceContext =
     input.spaceType === "personal"
       ? "Es la cuenta personal: todo movimiento es un gasto (expense)."
-      : `Es un negocio llamado "${input.spaceName ?? "sin nombre"}": puede haber ventas y gastos. En un comprobante, si el emisor es este negocio (o un nombre parecido) es una venta (income); si lo emite otro negocio, es una compra (expense).`;
+      : `Es un negocio llamado "${input.spaceName ?? "sin nombre"}": puede haber ventas y gastos.`;
   const hint = input.kindHint
-    ? `El usuario eligió registrar ${input.kindHint === "income" ? "ventas" : "gastos"}; úsalo solo cuando el texto sea ambiguo.`
+    ? `El usuario eligió registrar ${input.kindHint === "income" ? "ventas" : "gastos"}; úsalo solo cuando sea ambiguo.`
     : "";
+  const context = `${today} ${spaceContext} ${hint}`;
   if (input.audio)
-    return `${spaceContext} ${hint}\nTranscribe fielmente el audio en transcript y extrae los movimientos.`;
+    return `${context}
+Transcribe fielmente el audio en transcript y extrae los movimientos con su fecha si la mencionan.`;
   if (input.sourceType === "voice")
-    return `${spaceContext} ${hint}\nDictado del usuario: """${input.text}"""`;
+    return `${context}
+Dictado del usuario: """${input.text}"""`;
   const photoCount = input.images?.length ?? 1;
-  const receiptRules = `Para CADA comprobante compara el emisor (el nombre impreso arriba, junto al RUC) con "${input.spaceName ?? ""}": solo si coinciden es venta (income); si lo emite otro negocio o proveedor, para el usuario es una compra (expense), aunque el papel diga "Boleta de venta". Hoy es ${demoDate}: si una fecha tiene más de un año o es posterior a hoy, avísalo en notes.`;
+  const receiptRules = `Copia en issuer el emisor de cada comprobante. Si una fecha tiene más de un año o es posterior a hoy, avísalo en notes.`;
   if (photoCount === 1)
-    return `${spaceContext} ${hint}\nExtrae los movimientos de la Foto 1. ${receiptRules}`;
-  return `${spaceContext} ${hint}\nHay ${photoCount} fotos. Cada comprobante es independiente: extrae sus movimientos e indica en photo de qué foto sale. ${receiptRules} Si dos fotos muestran el mismo comprobante (mismo número, o mismo total y fecha), regístralo una sola vez y avísalo en notes.`;
+    return `${context}
+Extrae los movimientos de la Foto 1. ${receiptRules}`;
+  return `${context}
+Hay ${photoCount} fotos. Cada comprobante es independiente: extrae sus movimientos e indica en photo de qué foto sale. ${receiptRules} Si dos fotos muestran el mismo comprobante (mismo número, o mismo total y fecha), regístralo una sola vez y avísalo en notes.`;
 }

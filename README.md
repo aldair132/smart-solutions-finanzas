@@ -29,6 +29,7 @@ Usar un nombre de proyecto neutro: la URL no debe incluir nombres de personas, u
 | `/` | Guía de bienvenida de 2 minutos (abre directamente la voz, la foto o el perfil) y resumen de espacios. |
 | `/espacios/[id]` | Registro por **Voz** (se graba el audio y Gemini lo transcribe y ordena en una sola llamada; funciona en cualquier navegador), **Foto** (hasta 6 boletas, tickets, capturas de Yape o páginas de cuaderno a la vez, leídas en una sola llamada; detecta comprobantes repetidos y guarda cada movimiento con la fecha de su boleta) o **Escribir**. La IA propone borradores editables; nada se guarda sin confirmar. |
 | `/espacios/[id]/movimientos` | Historial por periodo, edición y PDF. |
+| `/espacios/[id]/analisis` | Indicadores del mes (ventas vs. mes pasado, gastos, ganancia y margen, venta promedio, fiados), proyección de cierre de mes y de los próximos 30 días, gráficos de ventas y gastos por semana, gastos por categoría y venta promedio por día, con tabla de datos y conclusiones automáticas. |
 | `/espacios/[id]/credito` | Perfil para crédito de 90 días: ventas y resultado promedio, margen, constancia, estabilidad, tendencia, comprobantes y cuota referencial; puntaje de preparación 0–100, explicación con IA y **reporte PDF** para la entidad. |
 | `/espacios/[id]/fiados` | Ventas al crédito: quién debe, cuánto y desde cuándo; cobros totales o parciales. Por voz: «Le fié 15 a doña Carmen», «Don Julio me pagó 10». Un fiado no suma a ventas hasta que se cobra. |
 | `/espacios/[id]/perfil` | Perfil, configuración y salida de la demo. |
@@ -47,6 +48,8 @@ Datos de ejemplo: 90 días de historial generados de forma determinista (`lib/mo
 - `lib/receivables.ts` — saldos, resumen y búsqueda de fiados por nombre hablado («doña Carmen» ≈ «Sra. Carmen»).
 - `hooks/useNaturalVoice.ts` — reproduce la voz neuronal (primera frase y resto en paralelo) y usa la voz del navegador si falla.
 - `hooks/useAudioRecorder.ts` — en modo conversación detecta cuándo dejas de hablar (energía vs. ruido de fondo) y corta solo.
+- `lib/analytics.ts` + `components/Charts.tsx` — indicadores y gráficos SVG sin librerías (paleta azul/naranja validada para daltonismo).
+- `lib/server/receiptRules.ts` — en comprobantes, venta o compra lo decide el emisor (regla fija con tolerancia a errores de lectura), no el modelo.
 - `lib/creditProfile.ts` — indicadores y puntaje, funciones puras y explicables (la IA explica, no calcula).
 - `lib/aiService.ts` — cliente de las rutas y compresión de fotos (máx. 1280 px).
 - `hooks/useAudioRecorder.ts` + `lib/audioEncoding.ts` — graba con MediaRecorder y convierte a WAV mono 16 kHz (máx. 60 s).

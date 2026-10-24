@@ -263,7 +263,7 @@ export function DraftCard({
             </Field>
           </div>
           {showDate && (
-            <Field label="Fecha del comprobante">
+            <Field label={draft.photoIndex ? "Fecha del comprobante" : "Fecha"}>
               <input
                 type="date"
                 value={draft.date}

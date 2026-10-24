@@ -19,13 +19,14 @@ export function SpaceShell({
   const [isAssistantOpen, setIsAssistantOpen] = useState(false);
   const space = spaces.find((item) => item.id === spaceId);
   const suffix =
-    ["/movimientos", "/credito", "/fiados", "/perfil"].find((item) =>
-      pathname.endsWith(item),
+    ["/movimientos", "/analisis", "/credito", "/fiados", "/perfil"].find(
+      (item) => pathname.endsWith(item),
     ) ?? "";
   const tabs: { label: string; suffix: string; icon: IconName }[] = [
     { label: "Inicio", suffix: "", icon: "home" },
     { label: "Movimientos", suffix: "/movimientos", icon: "receipt" },
-    { label: "Crédito", suffix: "/credito", icon: "chart" },
+    { label: "Análisis", suffix: "/analisis", icon: "chart" },
+    { label: "Crédito", suffix: "/credito", icon: "shield" },
     { label: "Perfil", suffix: "/perfil", icon: "user" },
   ];
   if (!space)

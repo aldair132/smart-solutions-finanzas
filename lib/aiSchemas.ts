@@ -48,7 +48,13 @@ export const extractionSchema = z.object({
         .string()
         .nullable()
         .describe(
-          "Fecha impresa o escrita en el comprobante en formato AAAA-MM-DD; null si no aparece o no es legible",
+          "AAAA-MM-DD: fecha del comprobante o la mencionada (hoy, ayer…); null si no hay",
+        ),
+      issuer: z
+        .string()
+        .nullable()
+        .describe(
+          "Nombre del emisor impreso en el comprobante; null en voz o texto",
         ),
     }),
   ),

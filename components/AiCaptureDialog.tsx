@@ -518,7 +518,7 @@ export function AiCaptureDialog({
                     : null
                 }
                 isPersonal={isPersonal}
-                showDate={method === "image"}
+                showDate
                 fallbackDate={date.slice(0, 10)}
                 isExpanded={expandedKeys.has(draft.key)}
                 collectionHint={
