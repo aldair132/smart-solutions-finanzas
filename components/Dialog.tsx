@@ -6,11 +6,14 @@ export function Dialog({
   children,
   onClose,
   dirty = false,
+  size = "default",
 }: {
   title: string;
   children: ReactNode;
   onClose: () => void;
   dirty?: boolean;
+  // "large": ancho cómodo en escritorio y pantalla completa en el celular.
+  size?: "default" | "large";
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   function requestClose() {
@@ -29,6 +32,7 @@ export function Dialog({
   return (
     <dialog
       ref={dialogRef}
+      className={size === "large" ? "dialog-large" : undefined}
       onCancel={(event) => {
         event.preventDefault();
         requestClose();

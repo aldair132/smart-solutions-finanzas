@@ -85,46 +85,89 @@ export function AiCaptureDialog({
   const needsDefaultDate =
     method === "voice" || (drafts ?? []).some((draft) => !draft.date);
   const isDirty = Boolean(transcript || images.length || drafts);
-  async function handleImages(fileList: FileList | null) {
+  async function compressFiles(fileList: FileList | null, limit: number) {
     const files = Array.from(fileList ?? []);
-    const freeSlots = maxPhotos - images.length;
-    setError("");
-    if (!files.length) return;
-    if (files.length > freeSlots)
+    if (files.length > limit)
       setError(
         `Puedes leer hasta ${maxPhotos} fotos a la vez; se agregaron las primeras.`,
       );
+    return Promise.all(
+      files.slice(0, limit).map(async (file) => ({
+        ...(await compressImage(file)),
+        key: crypto.randomUUID(),
+      })),
+    );
+  }
+  async function handleImages(fileList: FileList | null) {
+    setError("");
     try {
-      const compressed = await Promise.all(
-        files.slice(0, freeSlots).map(async (file) => ({
-          ...(await compressImage(file)),
-          key: crypto.randomUUID(),
-        })),
+      const compressed = await compressFiles(
+        fileList,
+        maxPhotos - images.length,
       );
       setImages((current) => [...current, ...compressed].slice(0, maxPhotos));
     } catch {
       setError("No pudimos abrir una de las imágenes. Prueba con JPG o PNG.");
     }
   }
-  async function runExtraction(request: ExtractionRequest) {
+  // Durante la revisión: la IA lee solo las fotos nuevas y suma sus movimientos.
+  async function appendPhotos(fileList: FileList | null) {
+    const photoOffset = images.length;
+    setError("");
+    try {
+      const compressed = await compressFiles(fileList, maxPhotos);
+      if (!compressed.length) return;
+      setImages((current) => [...current, ...compressed]);
+      runExtraction(
+        {
+          space,
+          kindHint,
+          sourceType: "image",
+          images: compressed.map(({ mediaType, data }) => ({
+            mediaType,
+            data,
+          })),
+        },
+        { append: true, photoOffset },
+      );
+    } catch {
+      setError("No pudimos abrir una de las imágenes. Prueba con JPG o PNG.");
+    }
+  }
+  async function runExtraction(
+    request: ExtractionRequest,
+    { append = false, photoOffset = 0 } = {},
+  ) {
     if (isProcessing) return;
     setIsProcessing(true);
     setError("");
     try {
       const extraction = await extractMovementDrafts(request);
-      const extractedDrafts = toEditableDrafts(extraction);
-      setDrafts(extractedDrafts);
+      const extractedDrafts = toEditableDrafts(extraction).map((draft) => ({
+        ...draft,
+        photoIndex: draft.photoIndex ? draft.photoIndex + photoOffset : null,
+      }));
       // Solo se abren los borradores dudosos; los correctos quedan como resumen.
-      setExpandedKeys(
-        new Set(
-          extractedDrafts
-            .filter((draft) =>
-              needsReview(validateDraft(draft, { isPersonal })),
-            )
-            .map((draft) => draft.key),
-        ),
+      const reviewKeys = extractedDrafts
+        .filter((draft) => needsReview(validateDraft(draft, { isPersonal })))
+        .map((draft) => draft.key);
+      setDrafts((current) =>
+        append ? [...(current ?? []), ...extractedDrafts] : extractedDrafts,
       );
-      setResult({ mode: extraction.mode, notes: extraction.notes });
+      setExpandedKeys((current) =>
+        append ? new Set([...current, ...reviewKeys]) : new Set(reviewKeys),
+      );
+      setResult((current) => ({
+        mode: extraction.mode,
+        notes: append
+          ? [
+              current?.notes,
+              extraction.notes && `Fotos nuevas: ${extraction.notes}`,
+            ]
+              .filter(Boolean)
+              .join(" ")
+          : extraction.notes,
+      }));
       // Con audio o imagen, la IA devuelve lo que escuchó o leyó.
       if (extraction.transcript && !("text" in request))
         setTranscript(extraction.transcript);
@@ -281,6 +324,7 @@ export function AiCaptureDialog({
   }
   return (
     <Dialog
+      size="large"
       title={method === "voice" ? "Registrar por voz" : "Registrar con foto"}
       onClose={onClose}
       dirty={isDirty}
@@ -539,14 +583,33 @@ export function AiCaptureDialog({
               </p>
             )}
           </div>
-          <button
-            type="button"
-            className="button outline"
-            onClick={addEmptyDraft}
-          >
-            <Icon name="plus" />
-            Agregar movimiento
-          </button>
+          <div className="review-add">
+            {method === "image" && (
+              <label className={`button outline ${isProcessing ? "busy" : ""}`}>
+                <Icon name="camera" />
+                {isProcessing ? "Leyendo fotos nuevas…" : "Agregar más fotos"}
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="sr-only"
+                  disabled={isProcessing}
+                  onChange={(event) => {
+                    appendPhotos(event.target.files);
+                    event.target.value = "";
+                  }}
+                />
+              </label>
+            )}
+            <button
+              type="button"
+              className="button outline"
+              onClick={addEmptyDraft}
+            >
+              <Icon name="plus" />
+              Agregar a mano
+            </button>
+          </div>
           {needsDefaultDate && (
             <label>
               {method === "image"

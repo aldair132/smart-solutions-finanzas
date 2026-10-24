@@ -22,18 +22,35 @@ const panelTitles: Record<ProfilePanel, string> = {
   logout: "Cerrar sesión",
 };
 export function ProfileView({ spaceId }: { spaceId: string }) {
-  const { user, spaces, updateUser, updateSpace, reset } = useDemo();
+  const {
+    user,
+    spaces,
+    movements,
+    receivables,
+    updateUser,
+    updateSpace,
+    removeSpace,
+    reset,
+  } = useDemo();
   const router = useRouter();
   const space = spaces.find((item) => item.id === spaceId);
+  const spaceMovementCount = movements.filter(
+    (movement) => movement.spaceId === spaceId,
+  ).length;
+  const spaceReceivableCount = receivables.filter(
+    (receivable) => receivable.spaceId === spaceId,
+  ).length;
   const [panel, setPanel] = useState<ProfilePanel | null>(null);
   const [name, setName] = useState("");
   const [dirty, setDirty] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
   function openPanel(panel: ProfilePanel) {
     setName(panel === "customer" ? user.fullName : (space?.name ?? ""));
     setDirty(false);
     setError("");
+    setIsConfirmingDelete(false);
     setPanel(panel);
   }
   function handleSave(event: FormEvent<HTMLFormElement>) {
@@ -46,6 +63,16 @@ export function ProfileView({ spaceId }: { spaceId: string }) {
     } catch (failure) {
       setError(
         failure instanceof Error ? failure.message : "No se pudo guardar.",
+      );
+    }
+  }
+  function handleDeleteSpace() {
+    try {
+      router.push("/");
+      removeSpace(spaceId);
+    } catch (failure) {
+      setError(
+        failure instanceof Error ? failure.message : "No se pudo eliminar.",
       );
     }
   }
@@ -149,6 +176,43 @@ export function ProfileView({ spaceId }: { spaceId: string }) {
               <button className="button primary">Guardar cambios</button>
             </form>
           ) : null}
+          {panel === "settings" && space?.type === "business" && (
+            <div className="danger-zone">
+              <h3>Eliminar este negocio</h3>
+              <p className="muted">
+                Se borrarán {spaceMovementCount} movimiento
+                {spaceMovementCount === 1 ? "" : "s"} y {spaceReceivableCount}{" "}
+                fiado{spaceReceivableCount === 1 ? "" : "s"} de «{space.name}».
+                No se puede deshacer.
+              </p>
+              {isConfirmingDelete ? (
+                <div className="dialog-actions">
+                  <button
+                    type="button"
+                    className="button outline"
+                    onClick={() => setIsConfirmingDelete(false)}
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="button"
+                    className="button danger"
+                    onClick={handleDeleteSpace}
+                  >
+                    Sí, eliminar
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  className="button danger-outline"
+                  onClick={() => setIsConfirmingDelete(true)}
+                >
+                  Eliminar negocio
+                </button>
+              )}
+            </div>
+          )}
           {panel === "support" && (
             <div className="help-content">
               <h3>¿Cómo registro una venta o gasto?</h3>

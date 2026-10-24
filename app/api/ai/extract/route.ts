@@ -123,7 +123,8 @@ Transcribe fielmente el audio en transcript y extrae los movimientos con su fech
     return `${context}
 Dictado del usuario: """${input.text}"""`;
   const photoCount = input.images?.length ?? 1;
-  const receiptRules = `Copia en issuer el emisor de cada comprobante. Si una fecha tiene más de un año o es posterior a hoy, avísalo en notes.`;
+  // Las fechas antiguas o futuras las valida la app (lib/draftReview.ts); la IA solo las lee.
+  const receiptRules = `Copia en issuer el emisor de cada comprobante. No comentes las fechas en notes.`;
   if (photoCount === 1)
     return `${context}
 Extrae los movimientos de la Foto 1. ${receiptRules}`;

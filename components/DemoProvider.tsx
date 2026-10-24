@@ -9,6 +9,7 @@ import {
 import { getAiStatus } from "@/lib/aiService";
 import {
   clearStoredDemo,
+  deleteSpace,
   loadDemo,
   loadStoredDemo,
   saveMovement,
@@ -42,6 +43,7 @@ type DemoContextValue = DemoState & {
   supportsAudio: boolean;
   neuralVoice: boolean;
   updateSpace: (name: string, id?: string) => string;
+  removeSpace: (spaceId: string) => void;
   updateMovement: (movement: MovementInput) => void;
   addMovements: (movements: MovementInput[]) => void;
   addReceivables: (receivables: ReceivableInput[]) => void;
@@ -76,6 +78,20 @@ export function DemoProvider({ children }: { children: ReactNode }) {
         : [...current.spaces, space],
     }));
     return space.id;
+  }
+  // Borra el negocio con sus movimientos y fiados.
+  function removeSpace(spaceId: string) {
+    const removedId = deleteSpace(state.spaces, spaceId);
+    setState((current) => ({
+      ...current,
+      spaces: current.spaces.filter((space) => space.id !== removedId),
+      movements: current.movements.filter(
+        (movement) => movement.spaceId !== removedId,
+      ),
+      receivables: current.receivables.filter(
+        (receivable) => receivable.spaceId !== removedId,
+      ),
+    }));
   }
   function addMovements(inputs: MovementInput[]) {
     const movements = inputs.map(saveMovement);
@@ -147,6 +163,7 @@ export function DemoProvider({ children }: { children: ReactNode }) {
         supportsAudio: aiStatus?.supportsAudio ?? true,
         neuralVoice: aiStatus?.neuralVoice ?? false,
         updateSpace,
+        removeSpace,
         updateMovement: (movement) => addMovements([movement]),
         addMovements,
         addReceivables,

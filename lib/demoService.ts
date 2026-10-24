@@ -56,6 +56,14 @@ export function saveUser(user: User, fullName: string): User {
   // TODO(BACKEND): actualizar cuenta autenticada con fullName; salida User; API por acordar, errores sin anunciar éxito.
   return { ...user, fullName: fullName.trim() };
 }
+export function deleteSpace(spaces: Space[], spaceId: string) {
+  const space = spaces.find((item) => item.id === spaceId);
+  if (!space) throw new Error("No encontramos este negocio.");
+  if (space.type === "personal")
+    throw new Error("La cuenta personal no se puede eliminar.");
+  // TODO(BACKEND): eliminar el espacio (spaceId) con sus movimientos y fiados en una transacción; validar sesión y pertenencia. Salida: confirmación sin contenido.
+  return space.id;
+}
 export function saveReceivable(
   receivable: Omit<Receivable, "id" | "paidMinor"> & { id?: string },
 ): Receivable {
