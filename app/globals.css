@@ -2736,3 +2736,12 @@ form select:focus-visible {
     flex: 1;
   }
 }
+.analysis-empty {
+  gap: 14px;
+  max-width: 640px;
+}
+.analysis-empty-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}

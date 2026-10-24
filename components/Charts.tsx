@@ -37,6 +37,7 @@ function compactMoney(amountMinor: number) {
   const soles = amountMinor / 100;
   if (soles >= 1000)
     return `S/ ${(soles / 1000).toFixed(soles >= 10000 ? 0 : 1)}k`;
+  if (soles < 10) return `S/ ${soles.toFixed(Number.isInteger(soles) ? 0 : 1)}`;
   return `S/ ${Math.round(soles)}`;
 }
 // Tope "redondo" para el eje: 3 líneas de guía legibles.

@@ -65,6 +65,44 @@ export function AnalysisView({ spaceId }: { spaceId: string }) {
     selectReceivables(receivables, space.id),
   );
   const change = analytics.incomeChangePercent;
+  if (!analytics.recentMovementCount)
+    return (
+      <>
+        <div className="view-heading">
+          <p className="eyebrow">TUS NÚMEROS, CLAROS</p>
+          <h1>Análisis</h1>
+        </div>
+        <section className="analysis-card analysis-empty">
+          <h2>Aún no hay registros recientes</h2>
+          <p>
+            El análisis usa tus movimientos de los últimos 90 días. Registra tus
+            ventas y gastos de hoy y aquí verás tus ganancias, gráficos y
+            proyecciones.
+          </p>
+          {analytics.olderMovementCount > 0 && (
+            <p className="muted">
+              Tienes {analytics.olderMovementCount} registro
+              {analytics.olderMovementCount === 1 ? "" : "s"} con fechas más
+              antiguas (por ejemplo, boletas viejas); no se incluyen aquí.
+            </p>
+          )}
+          <div className="analysis-empty-actions">
+            <Link
+              className="button primary"
+              href={`/espacios/${space.id}?capturar=voz`}
+            >
+              Registrar por voz
+            </Link>
+            <Link
+              className="button outline"
+              href={`/espacios/${space.id}/movimientos?period=month`}
+            >
+              Ver mis movimientos
+            </Link>
+          </div>
+        </section>
+      </>
+    );
   return (
     <>
       <div className="view-heading">
@@ -138,12 +176,19 @@ export function AnalysisView({ spaceId }: { spaceId: string }) {
               <strong>{money(analytics.nextMonthResultMinor)}</strong>
             </div>
           </div>
-          <ProjectionChart
-            cumulative={analytics.cumulative}
-            daysInMonth={analytics.daysInMonth}
-            projectedMinor={analytics.projectedIncomeMinor}
-            color={salesColor}
-          />
+          {analytics.monthMovementCount > 0 ? (
+            <ProjectionChart
+              cumulative={analytics.cumulative}
+              daysInMonth={analytics.daysInMonth}
+              projectedMinor={analytics.projectedIncomeMinor}
+              color={salesColor}
+            />
+          ) : (
+            <p className="muted">
+              Aún no hay registros este mes. Cuando registres tus primeras
+              ventas, aquí verás hacia dónde va tu mes.
+            </p>
+          )}
         </section>
       )}
       <div className="analysis-grid">

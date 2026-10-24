@@ -36,6 +36,8 @@ type CollectionInput = {
   source: CaptureSource;
 };
 type DemoContextValue = DemoState & {
+  // false hasta restaurar lo guardado en el dispositivo (evita mostrar datos de ejemplo un instante).
+  isReady: boolean;
   aiMode: AiMode | null;
   supportsAudio: boolean;
   neuralVoice: boolean;
@@ -140,6 +142,7 @@ export function DemoProvider({ children }: { children: ReactNode }) {
     <DemoContext.Provider
       value={{
         ...state,
+        isReady: isRestored,
         aiMode: aiStatus?.mode ?? null,
         supportsAudio: aiStatus?.supportsAudio ?? true,
         neuralVoice: aiStatus?.neuralVoice ?? false,

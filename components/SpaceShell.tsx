@@ -12,7 +12,7 @@ export function SpaceShell({
   spaceId: string;
   children: ReactNode;
 }) {
-  const { spaces } = useDemo();
+  const { spaces, isReady } = useDemo();
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -29,6 +29,12 @@ export function SpaceShell({
     { label: "Crédito", suffix: "/credito", icon: "shield" },
     { label: "Perfil", suffix: "/perfil", icon: "user" },
   ];
+  if (!isReady)
+    return (
+      <main className="page" aria-busy="true">
+        Cargando tu espacio…
+      </main>
+    );
   if (!space)
     return (
       <main className="page empty-state">

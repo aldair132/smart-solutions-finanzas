@@ -15,6 +15,9 @@ export type WeekdayPoint = {
 };
 export type CumulativePoint = { day: number; incomeMinor: number };
 export type AnalyticsSummary = {
+  monthMovementCount: number;
+  recentMovementCount: number;
+  olderMovementCount: number;
   monthIncomeMinor: number;
   monthExpenseMinor: number;
   monthResultMinor: number;
@@ -217,6 +220,13 @@ export function calculateAnalytics(movements: Movement[]): AnalyticsSummary {
     ),
   );
   const partialSummary = {
+    monthMovementCount: monthMovements.length,
+    recentMovementCount: operational.filter(
+      (movement) => daysAgo(movement) >= 0 && daysAgo(movement) < 90,
+    ).length,
+    olderMovementCount: operational.filter(
+      (movement) => daysAgo(movement) >= 90,
+    ).length,
     monthIncomeMinor: month.income,
     monthExpenseMinor: month.expense,
     monthResultMinor: month.result,
