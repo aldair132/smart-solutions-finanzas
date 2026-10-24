@@ -53,7 +53,7 @@ export function AiCaptureDialog({
   kindHint: "income" | "expense" | null;
   method: "voice" | "image";
   onClose: () => void;
-  onSaved: (count: number) => void;
+  onSaved: (count: number, pastDatedCount: number) => void;
 }) {
   const {
     saveCapture,
@@ -88,6 +88,11 @@ export function AiCaptureDialog({
   );
   const invalidCount = [...validations.values()].filter(hasErrors).length;
   const totals = summarizeDrafts(drafts ?? [], isPersonal);
+  const today = getBusinessDay();
+  // Boletas con fecha anterior: se guardan en su día y no suman en «Hoy».
+  const pastDatedCount = (drafts ?? []).filter(
+    (draft) => draft.date && draft.date < today,
+  ).length;
   const needsDefaultDate =
     method === "voice" || (drafts ?? []).some((draft) => !draft.date);
   const isDirty = Boolean(transcript || images.length || drafts);
@@ -227,6 +232,13 @@ export function AiCaptureDialog({
       ),
     );
   }
+  function applyTodayToPastDates() {
+    setDrafts((current) =>
+      (current ?? []).map((draft) =>
+        draft.date && draft.date < today ? { ...draft, date: today } : draft,
+      ),
+    );
+  }
   function toggleExpanded(key: string) {
     setExpandedKeys((current) => {
       const next = new Set(current);
@@ -281,7 +293,7 @@ export function AiCaptureDialog({
     setIsSaving(true);
     try {
       saveDrafts(drafts);
-      onSaved(drafts.length);
+      onSaved(drafts.length, pastDatedCount);
       onClose();
     } catch (failure) {
       setExpandedKeys((current) => new Set([
@@ -569,6 +581,26 @@ export function AiCaptureDialog({
                   Fiado {money(totals.creditMinor)}
                 </span>
               )}
+            </div>
+          )}
+          {pastDatedCount > 0 && (
+            <div className="date-notice" role="status">
+              <p>
+                <strong>
+                  {pastDatedCount === 1
+                    ? "1 movimiento tiene fecha anterior a hoy."
+                    : `${pastDatedCount} movimientos tienen fecha anterior a hoy.`}
+                </strong>{" "}
+                Se guardarán en la fecha impresa: los verás en Movimientos y
+                Análisis, no en «Hoy».
+              </p>
+              <button
+                type="button"
+                className="text-button"
+                onClick={applyTodayToPastDates}
+              >
+                Registrar con fecha de hoy
+              </button>
             </div>
           )}
           <div className="review-list" ref={reviewListRef}>

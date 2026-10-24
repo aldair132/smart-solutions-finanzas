@@ -1618,6 +1618,16 @@ form select:focus-visible {
   display: grid;
   gap: 6px;
 }
+.date-notice {
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #fff6e5;
+  border: 1px solid #f0d9a8;
+  font-size: 14px;
+  display: grid;
+  gap: 6px;
+  justify-items: start;
+}
 .ai-result.demo {
   background: #fff6e5;
 }

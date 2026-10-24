@@ -162,9 +162,12 @@ export function SpaceHome({ spaceId }: { spaceId: string }) {
           kindHint={kind}
           method={method}
           onClose={() => setMethod(null)}
-          onSaved={(count) =>
+          onSaved={(count, pastDatedCount) =>
             setNotice(
-              `${count} registro${count === 1 ? "" : "s"} guardado${count === 1 ? "" : "s"}.`,
+              `${count} registro${count === 1 ? "" : "s"} guardado${count === 1 ? "" : "s"}.` +
+                (pastDatedCount
+                  ? ` ${pastDatedCount} con la fecha de su comprobante (anterior a hoy): búscalo${pastDatedCount === 1 ? "" : "s"} en Movimientos.`
+                  : ""),
             )
           }
         />

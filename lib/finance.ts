@@ -41,11 +41,15 @@ export function selectMovements(
 export function localDate(value: string) {
   return getBusinessDay(new Date(value));
 }
+// El año solo aparece si no es el actual: «26 de julio de 2025».
 export function displayDate(value: string) {
+  const isOtherYear =
+    getBusinessDay(new Date(value)).slice(0, 4) !== getBusinessDay().slice(0, 4);
   return new Intl.DateTimeFormat("es-PE", {
     timeZone: businessTimeZone,
     day: "numeric",
     month: "long",
+    ...(isOtherYear && { year: "numeric" }),
   }).format(new Date(value));
 }
 export function displayTime(value: string) {
