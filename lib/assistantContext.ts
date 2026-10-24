@@ -1,7 +1,8 @@
 import { calculateCreditProfile } from "./creditProfile";
 import { money, selectMovements, totals } from "./finance";
 import { demoDate } from "./mockData";
-import type { Movement, Period, Space } from "./types";
+import { selectReceivables, summarizeReceivables } from "./receivables";
+import type { Movement, Period, Receivable, Space } from "./types";
 
 const periodLabels: Record<Period, string> = {
   today: "hoy",
@@ -33,10 +34,26 @@ function topExpenseCategories(movements: Movement[]) {
     .map(([category, amountMinor]) => `${category}: ${money(amountMinor)}`);
 }
 
+function describeReceivables(spaceReceivables: Receivable[]) {
+  const summary = summarizeReceivables(spaceReceivables);
+  return {
+    porCobrar: money(summary.pendingMinor),
+    clientesQueDeben: spaceReceivables
+      .filter((receivable) => receivable.amountMinor > receivable.paidMinor)
+      .map(
+        (receivable) =>
+          `${receivable.customer}: ${money(receivable.amountMinor - receivable.paidMinor)}`,
+      ),
+    porcentajeCobrado: summary.collectionRatePercent,
+    diasDelFiadoMasAntiguo: summary.oldestPendingDays,
+  };
+}
+
 // Resumen compacto para el asistente: cifras ya calculadas, nunca la lista completa.
 export function buildAssistantContext(
   spaces: Space[],
   movements: Movement[],
+  receivables: Receivable[],
   currentSpaceId: string,
 ) {
   return {
@@ -68,6 +85,10 @@ export function buildAssistantContext(
             (movement) =>
               `${movement.occurredAt.slice(0, 16)} ${movement.kind === "income" ? "venta" : "gasto"} ${movement.description} ${money(movement.amountMinor)}`,
           ),
+        fiados:
+          space.type === "business"
+            ? describeReceivables(selectReceivables(receivables, space.id))
+            : undefined,
         perfilCredito: profile && {
           puntaje: profile.score,
           ventasPromedioMensual: money(profile.avgMonthlyIncomeMinor),

@@ -19,7 +19,7 @@ export function SpaceShell({
   const [isAssistantOpen, setIsAssistantOpen] = useState(false);
   const space = spaces.find((item) => item.id === spaceId);
   const suffix =
-    ["/movimientos", "/credito", "/perfil"].find((item) =>
+    ["/movimientos", "/credito", "/fiados", "/perfil"].find((item) =>
       pathname.endsWith(item),
     ) ?? "";
   const tabs: { label: string; suffix: string; icon: IconName }[] = [

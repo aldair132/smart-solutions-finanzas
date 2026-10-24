@@ -5,6 +5,7 @@ import { useState, type FormEvent } from "react";
 import { useDemo } from "./DemoProvider";
 import { Dialog } from "./Dialog";
 import { Icon } from "./Icon";
+import { WelcomeGuide } from "./WelcomeGuide";
 import { money, selectMovements, totals } from "@/lib/finance";
 
 export function Overview() {
@@ -46,6 +47,7 @@ export function Overview() {
           Hoy · 23 oct.
         </div>
       </div>
+      <WelcomeGuide />
       <div className="overview-grid">
         <section>
           <div className="section-heading">

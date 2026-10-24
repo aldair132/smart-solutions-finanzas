@@ -99,6 +99,56 @@ export const initialState: DemoState = {
     },
     ...createMovementHistory("2026-10-23"),
   ],
+  // Fiados de ejemplo (clientes ficticios): pendientes y ya cobrados.
+  receivables: [
+    {
+      id: "f1",
+      spaceId: "bodega",
+      customer: "Sra. Carmen",
+      description: "Abarrotes de la semana",
+      amountMinor: 4500,
+      paidMinor: 1500,
+      createdAt: "2026-10-16T18:20:00-05:00",
+    },
+    {
+      id: "f2",
+      spaceId: "bodega",
+      customer: "Don Julio",
+      description: "Gaseosas y pan",
+      amountMinor: 1850,
+      paidMinor: 0,
+      createdAt: "2026-10-21T09:10:00-05:00",
+    },
+    {
+      id: "f3",
+      spaceId: "bodega",
+      customer: "Vecina Lucía",
+      description: "Arroz y aceite",
+      amountMinor: 3200,
+      paidMinor: 3200,
+      createdAt: "2026-10-05T11:00:00-05:00",
+      paidAt: "2026-10-12T17:30:00-05:00",
+    },
+    {
+      id: "f4",
+      spaceId: "comida",
+      customer: "Taller del frente",
+      description: "5 menús",
+      amountMinor: 6000,
+      paidMinor: 0,
+      createdAt: "2026-10-20T13:15:00-05:00",
+    },
+    {
+      id: "f5",
+      spaceId: "comida",
+      customer: "Sr. Pedro",
+      description: "Almuerzos de la quincena",
+      amountMinor: 12000,
+      paidMinor: 12000,
+      createdAt: "2026-09-28T13:00:00-05:00",
+      paidAt: "2026-10-15T19:00:00-05:00",
+    },
+  ],
 };
 const demoMode: AiMode = "demo";
 
@@ -121,6 +171,7 @@ export function getDemoExtraction(
         ? [
             {
               kind: "expense",
+              customer: null,
               description: "Compra de mercadería",
               amountMinor: 8650,
               category: "Mercadería",
@@ -129,12 +180,14 @@ export function getDemoExtraction(
         : [
             {
               kind: "income",
+              customer: null,
               description: "Venta de 3 menús",
               amountMinor: 3600,
               category: "Ventas",
             },
             {
               kind: "expense",
+              customer: null,
               description: "Balón de gas",
               amountMinor: 5000,
               category: "Servicios",

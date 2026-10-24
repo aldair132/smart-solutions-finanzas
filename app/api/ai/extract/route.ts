@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { checkRateLimit } from "@/lib/server/rateLimit";
 import { extractionSchema } from "@/lib/aiSchemas";
 import { getDemoExtraction } from "@/lib/mockData";
 import { generateStructured, getAiProvider } from "@/lib/server/aiProvider";
@@ -27,6 +28,8 @@ const requestSchema = z.object({
 type ExtractionRequest = z.infer<typeof requestSchema>;
 
 export async function POST(request: Request) {
+  const limited = checkRateLimit(request);
+  if (limited) return limited;
   const parsed = requestSchema.safeParse(
     await request.json().catch(() => null),
   );
@@ -56,6 +59,7 @@ export async function POST(request: Request) {
       notes: extraction.notes,
       drafts: extraction.movements.map((movement) => ({
         kind: input.spaceType === "personal" ? "expense" : movement.kind,
+        customer: movement.customer?.trim().slice(0, 60) || null,
         description: movement.description.slice(0, 120),
         amountMinor:
           movement.amountSoles && movement.amountSoles > 0

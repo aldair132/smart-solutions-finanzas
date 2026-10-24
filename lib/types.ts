@@ -17,12 +17,31 @@ export type Movement = {
   source?: CaptureSource;
 };
 export type User = { id: string; fullName: string };
-export type DemoState = { spaces: Space[]; movements: Movement[]; user: User };
+// Venta al crédito ("fiado"): no es dinero en caja hasta que se cobra.
+export type Receivable = {
+  id: string;
+  spaceId: string;
+  customer: string;
+  description: string;
+  amountMinor: number;
+  paidMinor: number;
+  createdAt: string;
+  paidAt?: string;
+};
+export type DemoState = {
+  spaces: Space[];
+  movements: Movement[];
+  receivables: Receivable[];
+  user: User;
+};
 export type Period = "today" | "7d" | "month";
 export type AiMode = "ai" | "demo";
 export type AiStatus = { mode: AiMode; supportsAudio: boolean };
+export type DraftKind =
+  "income" | "expense" | "credit_sale" | "credit_collection";
 export type MovementDraft = {
-  kind: "income" | "expense";
+  kind: DraftKind;
+  customer: string | null;
   description: string;
   amountMinor: number | null;
   category: string;

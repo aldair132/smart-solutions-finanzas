@@ -1,5 +1,6 @@
 import { creditLevelLabels, type CreditProfile } from "./creditProfile";
 import { money } from "./finance";
+import type { ReceivableSummary } from "./receivables";
 import { demoDate } from "./mockData";
 import type { CreditAdvice, Space } from "./types";
 
@@ -7,6 +8,7 @@ export async function exportCreditPdf(
   space: Space,
   profile: CreditProfile,
   advice: CreditAdvice | null,
+  receivableSummary: ReceivableSummary,
 ) {
   const { jsPDF } = await import("jspdf");
   const pdf = new jsPDF();
@@ -47,6 +49,10 @@ export async function exportCreditPdf(
       `${profile.trendPercent >= 0 ? "+" : ""}${profile.trendPercent} %`,
     ],
     ["Registros con comprobante fotografiado", `${profile.evidencePercent} %`],
+    [
+      "Fiados por cobrar · % cobrado históricamente",
+      `${money(receivableSummary.pendingMinor)} · ${receivableSummary.collectionRatePercent} %`,
+    ],
     [
       "Cuota mensual referencial (30 % del resultado)",
       money(profile.paymentCapacityMinor),

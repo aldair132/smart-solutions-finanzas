@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useAudioRecorder } from "@/hooks/useAudioRecorder";
 import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
+import { useSpeechSynthesis } from "@/hooks/useSpeechSynthesis";
 import { askAssistant, transcribeAudio } from "@/lib/aiService";
 import { buildAssistantContext } from "@/lib/assistantContext";
 import type { ChatTurn } from "@/lib/types";
@@ -13,8 +14,17 @@ const suggestedQuestions = [
   "¿Cuánto gané esta semana?",
   "¿En qué estoy gastando más este mes?",
   "¿Cómo mejoro mi perfil para un crédito?",
-  "¿Qué negocio me deja más?",
+  "¿Quién me debe fiado y cuánto?",
 ];
+const voiceReplyStorageKey = "smart-solutions-voice-replies";
+
+function readVoiceReplyPreference() {
+  try {
+    return window.localStorage.getItem(voiceReplyStorageKey) !== "off";
+  } catch {
+    return true;
+  }
+}
 
 export function AssistantDialog({
   spaceId,
@@ -23,13 +33,15 @@ export function AssistantDialog({
   spaceId: string;
   onClose: () => void;
 }) {
-  const { spaces, movements, aiMode, supportsAudio } = useDemo();
+  const { spaces, movements, receivables, aiMode, supportsAudio } = useDemo();
   const [history, setHistory] = useState<ChatTurn[]>([]);
   const [question, setQuestion] = useState("");
   const [isThinking, setIsThinking] = useState(false);
   const [error, setError] = useState("");
   const listEndRef = useRef<HTMLDivElement>(null);
   const [isTranscribing, setIsTranscribing] = useState(false);
+  const [isVoiceReplyOn, setIsVoiceReplyOn] = useState(true);
+  const voice = useSpeechSynthesis();
   const speech = useSpeechRecognition((text) =>
     setQuestion((current) => `${current} ${text}`.trim()),
   );
@@ -50,10 +62,28 @@ export function AssistantDialog({
   useEffect(() => {
     listEndRef.current?.scrollIntoView({ block: "end" });
   }, [history, isThinking]);
+  useEffect(() => {
+    const preference = readVoiceReplyPreference();
+    queueMicrotask(() => setIsVoiceReplyOn(preference));
+  }, []);
+  function toggleVoiceReply() {
+    const nextValue = !isVoiceReplyOn;
+    setIsVoiceReplyOn(nextValue);
+    if (!nextValue) voice.stop();
+    try {
+      window.localStorage.setItem(
+        voiceReplyStorageKey,
+        nextValue ? "on" : "off",
+      );
+    } catch {
+      // La preferencia solo dura esta sesión.
+    }
+  }
   async function sendQuestion(text: string) {
     const cleanQuestion = text.trim();
     if (!cleanQuestion || isThinking) return;
     speech.stopListening();
+    voice.stop();
     setQuestion("");
     setError("");
     setHistory((current) => [
@@ -64,13 +94,14 @@ export function AssistantDialog({
     try {
       const reply = await askAssistant({
         question: cleanQuestion,
-        context: buildAssistantContext(spaces, movements, spaceId),
+        context: buildAssistantContext(spaces, movements, receivables, spaceId),
         history,
       });
       setHistory((current) => [
         ...current,
         { role: "assistant", text: reply.answer },
       ]);
+      if (isVoiceReplyOn) voice.speak(reply.answer);
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : "Sin respuesta.");
     } finally {
@@ -82,7 +113,26 @@ export function AssistantDialog({
     sendQuestion(question);
   }
   return (
-    <Dialog title="Tu asistente financiero" onClose={onClose}>
+    <Dialog
+      title="Tu asistente financiero"
+      onClose={() => {
+        voice.stop();
+        onClose();
+      }}
+    >
+      {voice.isSupported && (
+        <button
+          type="button"
+          className={`voice-toggle ${isVoiceReplyOn ? "on" : ""}`}
+          aria-pressed={isVoiceReplyOn}
+          onClick={toggleVoiceReply}
+        >
+          <Icon name="speaker" />
+          {isVoiceReplyOn
+            ? "Te respondo en voz alta"
+            : "Respuestas en voz alta: apagadas"}
+        </button>
+      )}
       <div className="chat-log" aria-live="polite">
         {!history.length && (
           <div className="chat-welcome">
@@ -104,9 +154,23 @@ export function AssistantDialog({
           </div>
         )}
         {history.map((turn, index) => (
-          <p key={index} className={`chat-bubble ${turn.role}`}>
-            {turn.text}
-          </p>
+          <div key={index} className={`chat-bubble ${turn.role}`}>
+            <p>{turn.text}</p>
+            {turn.role === "assistant" && voice.isSupported && (
+              <button
+                type="button"
+                className="listen-button"
+                onClick={() =>
+                  voice.speakingText === turn.text
+                    ? voice.stop()
+                    : voice.speak(turn.text)
+                }
+              >
+                <Icon name="speaker" />
+                {voice.speakingText === turn.text ? "Detener" : "Escuchar"}
+              </button>
+            )}
+          </div>
         ))}
         {isThinking && (
           <p className="chat-bubble assistant thinking">Pensando…</p>

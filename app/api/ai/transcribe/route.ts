@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { checkRateLimit } from "@/lib/server/rateLimit";
 import { transcriptionSchema } from "@/lib/aiSchemas";
 import { generateStructured, getAiProvider } from "@/lib/server/aiProvider";
 
@@ -10,6 +11,8 @@ const requestSchema = z.object({
 });
 
 export async function POST(request: Request) {
+  const limited = checkRateLimit(request);
+  if (limited) return limited;
   const parsed = requestSchema.safeParse(
     await request.json().catch(() => null),
   );

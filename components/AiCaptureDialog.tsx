@@ -7,34 +7,46 @@ import { movementCategories } from "@/lib/aiSchemas";
 import { compressImage, extractMovementDrafts } from "@/lib/aiService";
 import { money } from "@/lib/finance";
 import { demoDate } from "@/lib/mockData";
-import type { AiMode, ExtractionResult, Space } from "@/lib/types";
+import { findOpenReceivable } from "@/lib/receivables";
+import type { AiMode, DraftKind, ExtractionResult, Space } from "@/lib/types";
 import { useDemo } from "./DemoProvider";
 import { Dialog } from "./Dialog";
 import { Icon } from "./Icon";
 
 type EditableDraft = {
   key: string;
-  kind: "income" | "expense";
+  kind: DraftKind;
+  customer: string;
   description: string;
   amount: string;
   category: string;
 };
 type CapturedImage = Awaited<ReturnType<typeof compressImage>>;
 type ExtractionRequest = Parameters<typeof extractMovementDrafts>[0];
+const draftKindLabels: Record<DraftKind, string> = {
+  income: "Venta",
+  expense: "Gasto",
+  credit_sale: "Fiado",
+  credit_collection: "Cobro",
+};
 const voiceExamples = [
   "Vendí 3 menús a 12 soles y una gaseosa a 3",
   "Compré 2 balones de gas a 50 y pagué 15 de transporte",
-  "Hoy vendí 280 soles en abarrotes",
+  "Le fié 15 soles a doña Carmen y don Julio me pagó 10 de lo que debía",
 ];
 
 function toEditableDrafts(result: ExtractionResult): EditableDraft[] {
   return result.drafts.map((draft) => ({
     key: crypto.randomUUID(),
     kind: draft.kind,
+    customer: draft.customer ?? "",
     description: draft.description,
     amount: draft.amountMinor === null ? "" : String(draft.amountMinor / 100),
     category: draft.category,
   }));
+}
+function isCreditKind(kind: DraftKind) {
+  return kind === "credit_sale" || kind === "credit_collection";
 }
 function parseAmountMinor(amount: string) {
   const normalizedAmount = amount.replace(",", ".").trim();
@@ -56,7 +68,13 @@ export function AiCaptureDialog({
   onClose: () => void;
   onSaved: (count: number) => void;
 }) {
-  const { addMovements, supportsAudio } = useDemo();
+  const {
+    addMovements,
+    addReceivables,
+    collectReceivable,
+    receivables,
+    supportsAudio,
+  } = useDemo();
   const [transcript, setTranscript] = useState("");
   const [image, setImage] = useState<CapturedImage | null>(null);
   const [drafts, setDrafts] = useState<EditableDraft[] | null>(null);
@@ -129,6 +147,7 @@ export function AiCaptureDialog({
       {
         key: crypto.randomUUID(),
         kind: kindHint ?? "income",
+        customer: "",
         description: "",
         amount: "",
         category: "Otros",
@@ -136,37 +155,90 @@ export function AiCaptureDialog({
     ]);
   }
   function handleConfirm(event: FormEvent<HTMLFormElement>) {
-    const occurredAt = `${date}:00-05:00`;
     event.preventDefault();
     if (!drafts?.length) {
       setError("No hay movimientos para guardar.");
       return;
     }
     const invalidDraft = drafts.find(
-      (draft) => !draft.description.trim() || !parseAmountMinor(draft.amount),
+      (draft) =>
+        !draft.description.trim() ||
+        !parseAmountMinor(draft.amount) ||
+        (isCreditKind(draft.kind) && !draft.customer.trim()),
     );
     if (invalidDraft) {
-      setError("Completa el concepto y un importe válido en cada movimiento.");
+      setError(
+        "Completa concepto, importe válido y, en fiados y cobros, el cliente.",
+      );
       return;
     }
     try {
-      addMovements(
-        drafts.map((draft) => ({
-          spaceId: space.id,
-          kind: isPersonal ? "expense" : draft.kind,
-          amountMinor: parseAmountMinor(draft.amount)!,
-          description: draft.description,
-          category: draft.category,
-          occurredAt,
-          source: method,
-        })),
-      );
+      saveDrafts(drafts, `${date}:00-05:00`);
       onSaved(drafts.length);
       onClose();
     } catch (failure) {
       setError(
         failure instanceof Error ? failure.message : "No se pudo guardar.",
       );
+    }
+  }
+  // Ventas y gastos son movimientos; un fiado queda por cobrar y un cobro reduce su saldo.
+  function saveDrafts(confirmedDrafts: EditableDraft[], occurredAt: string) {
+    const movements = confirmedDrafts.filter(
+      (draft) => isPersonal || !isCreditKind(draft.kind),
+    );
+    addMovements(
+      movements.map((draft) => ({
+        spaceId: space.id,
+        kind: isPersonal || draft.kind === "expense" ? "expense" : "income",
+        amountMinor: parseAmountMinor(draft.amount)!,
+        description: draft.description,
+        category: draft.category,
+        occurredAt,
+        source: method,
+      })),
+    );
+    if (isPersonal) return;
+    addReceivables(
+      confirmedDrafts
+        .filter((draft) => draft.kind === "credit_sale")
+        .map((draft) => ({
+          spaceId: space.id,
+          // Reutiliza el nombre ya guardado ("doña Carmen" → "Sra. Carmen").
+          customer:
+            findOpenReceivable(receivables, space.id, draft.customer)
+              ?.customer ?? draft.customer,
+          description: draft.description,
+          amountMinor: parseAmountMinor(draft.amount)!,
+          createdAt: occurredAt,
+        })),
+    );
+    for (const draft of confirmedDrafts) {
+      if (draft.kind !== "credit_collection") continue;
+      const receivable = findOpenReceivable(
+        receivables,
+        space.id,
+        draft.customer,
+      );
+      if (receivable)
+        collectReceivable({
+          receivableId: receivable.id,
+          amountMinor: parseAmountMinor(draft.amount)!,
+          occurredAt,
+          source: method,
+        });
+      else
+        addMovements([
+          {
+            spaceId: space.id,
+            kind: "income",
+            amountMinor: parseAmountMinor(draft.amount)!,
+            description: `Cobro de fiado: ${draft.customer}`,
+            category: "Ventas",
+            occurredAt,
+            source: method,
+          },
+        ]);
     }
   }
   return (
@@ -339,7 +411,7 @@ export function AiCaptureDialog({
               <legend className="sr-only">Movimiento</legend>
               {!isPersonal && (
                 <div className="draft-kind" role="group" aria-label="Tipo">
-                  {(["income", "expense"] as const).map((kind) => (
+                  {(Object.keys(draftKindLabels) as DraftKind[]).map((kind) => (
                     <button
                       type="button"
                       key={kind}
@@ -347,10 +419,31 @@ export function AiCaptureDialog({
                       className={draft.kind === kind ? "selected" : ""}
                       onClick={() => updateDraft(draft.key, { kind })}
                     >
-                      {kind === "income" ? "Venta" : "Gasto"}
+                      {draftKindLabels[kind]}
                     </button>
                   ))}
                 </div>
+              )}
+              {!isPersonal && isCreditKind(draft.kind) && (
+                <label>
+                  Cliente
+                  <input
+                    required
+                    maxLength={60}
+                    value={draft.customer}
+                    placeholder="Ej.: Sra. Carmen"
+                    onChange={(event) =>
+                      updateDraft(draft.key, { customer: event.target.value })
+                    }
+                  />
+                  {draft.kind === "credit_collection" && (
+                    <small className="muted">
+                      {findOpenReceivable(receivables, space.id, draft.customer)
+                        ? "Se descontará de su fiado pendiente."
+                        : "No tiene fiado pendiente: se registrará como cobro."}
+                    </small>
+                  )}
+                </label>
               )}
               <label>
                 Concepto

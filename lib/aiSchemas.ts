@@ -21,7 +21,17 @@ export const extractionSchema = z.object({
     .describe("Advertencias breves para el usuario; vacío si todo es claro"),
   movements: z.array(
     z.object({
-      kind: z.enum(["income", "expense"]),
+      kind: z
+        .enum(["income", "expense", "credit_sale", "credit_collection"])
+        .describe(
+          "income venta cobrada; expense gasto; credit_sale venta fiada (no pagada); credit_collection cobro de un fiado anterior",
+        ),
+      customer: z
+        .string()
+        .nullable()
+        .describe(
+          "Solo en credit_sale o credit_collection: nombre o apodo del cliente tal como lo dijo; null en los demás",
+        ),
       description: z.string().describe("Concepto corto, máximo 6 palabras"),
       amountSoles: z
         .number()

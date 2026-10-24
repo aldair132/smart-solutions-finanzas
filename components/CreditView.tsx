@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useState, type CSSProperties } from "react";
+import { useSpeechSynthesis } from "@/hooks/useSpeechSynthesis";
 import { getCreditAdvice } from "@/lib/aiService";
 import {
   calculateCreditProfile,
@@ -9,13 +10,24 @@ import {
 } from "@/lib/creditProfile";
 import { exportCreditPdf } from "@/lib/exportCreditPdf";
 import { money, selectMovements } from "@/lib/finance";
+import {
+  selectReceivables,
+  summarizeReceivables,
+  type ReceivableSummary,
+} from "@/lib/receivables";
 import type { CreditAdvice, Space } from "@/lib/types";
 import { useDemo } from "./DemoProvider";
 import { Icon } from "./Icon";
 
-function buildAdviceContext(space: Space, profile: CreditProfile) {
+function buildAdviceContext(
+  space: Space,
+  profile: CreditProfile,
+  receivableSummary: ReceivableSummary,
+) {
   return {
     negocio: space.name,
+    fiadosPorCobrar: money(receivableSummary.pendingMinor),
+    porcentajeDeFiadosCobrados: receivableSummary.collectionRatePercent,
     ventasPromedioMensual: money(profile.avgMonthlyIncomeMinor),
     gastosPromedioMensual: money(profile.avgMonthlyExpenseMinor),
     resultadoPromedioMensual: money(profile.avgMonthlyResultMinor),
@@ -33,11 +45,12 @@ function buildAdviceContext(space: Space, profile: CreditProfile) {
 }
 
 export function CreditView({ spaceId }: { spaceId: string }) {
-  const { spaces, movements } = useDemo();
+  const { spaces, movements, receivables } = useDemo();
   const [advice, setAdvice] = useState<CreditAdvice | null>(null);
   const [isLoadingAdvice, setIsLoadingAdvice] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [error, setError] = useState("");
+  const voice = useSpeechSynthesis();
   const space = spaces.find((item) => item.id === spaceId);
   if (!space) return null;
   if (space.type === "personal")
@@ -65,6 +78,9 @@ export function CreditView({ spaceId }: { spaceId: string }) {
     );
   const currentSpace = space;
   const profile = calculateCreditProfile(selectMovements(movements, space.id));
+  const receivableSummary = summarizeReceivables(
+    selectReceivables(receivables, space.id),
+  );
   const maxMonthIncome = Math.max(
     1,
     ...profile.months.map((month) => month.incomeMinor),
@@ -74,7 +90,9 @@ export function CreditView({ spaceId }: { spaceId: string }) {
     setError("");
     try {
       setAdvice(
-        await getCreditAdvice(buildAdviceContext(currentSpace, profile)),
+        await getCreditAdvice(
+          buildAdviceContext(currentSpace, profile, receivableSummary),
+        ),
       );
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : "No disponible.");
@@ -85,7 +103,7 @@ export function CreditView({ spaceId }: { spaceId: string }) {
   async function handleExport() {
     setIsExporting(true);
     try {
-      await exportCreditPdf(currentSpace, profile, advice);
+      await exportCreditPdf(currentSpace, profile, advice, receivableSummary);
     } finally {
       setIsExporting(false);
     }
@@ -138,6 +156,19 @@ export function CreditView({ spaceId }: { spaceId: string }) {
             <strong>{money(profile.paymentCapacityMinor)}</strong>
             <small>30 % de tu resultado mensual</small>
           </div>
+          <Link
+            className="credit-receivables"
+            href={`/espacios/${space.id}/fiados`}
+          >
+            <span>Fiados</span>
+            <strong>
+              {money(receivableSummary.pendingMinor)} por cobrar ·{" "}
+              {receivableSummary.collectionRatePercent} % cobrado
+            </strong>
+            <small>
+              Cobrar a tiempo muestra que tu negocio maneja bien el crédito.
+            </small>
+          </Link>
         </section>
         <section className="credit-months">
           <h2>Ventas por periodo de 30 días</h2>
@@ -203,6 +234,26 @@ export function CreditView({ spaceId }: { spaceId: string }) {
           {advice && (
             <div className="advice-body">
               <p>{advice.summary}</p>
+              {voice.isSupported && (
+                <button
+                  type="button"
+                  className="listen-button"
+                  onClick={() => {
+                    const adviceText = [
+                      advice.summary,
+                      "Lo que haces bien:",
+                      ...advice.strengths,
+                      "Para mejorar tu perfil:",
+                      ...advice.improvements,
+                    ].join(" ");
+                    if (voice.speakingText) voice.stop();
+                    else voice.speak(adviceText);
+                  }}
+                >
+                  <Icon name="speaker" />
+                  {voice.speakingText ? "Detener" : "Escuchar explicación"}
+                </button>
+              )}
               <h3>Lo que haces bien</h3>
               <ul>
                 {advice.strengths.map((item) => (

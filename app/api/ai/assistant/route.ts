@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { checkRateLimit } from "@/lib/server/rateLimit";
 import { assistantReplySchema, creditAdviceSchema } from "@/lib/aiSchemas";
 import { getDemoAssistantAnswer, getDemoCreditAdvice } from "@/lib/mockData";
 import { generateStructured, getAiProvider } from "@/lib/server/aiProvider";
@@ -29,6 +30,8 @@ const requestSchema = z.discriminatedUnion("task", [
 ]);
 
 export async function POST(request: Request) {
+  const limited = checkRateLimit(request);
+  if (limited) return limited;
   const parsed = requestSchema.safeParse(
     await request.json().catch(() => null),
   );

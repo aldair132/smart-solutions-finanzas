@@ -1,5 +1,5 @@
 import { initialState } from "./mockData";
-import type { DemoState, Movement, Space, User } from "./types";
+import type { DemoState, Movement, Receivable, Space, User } from "./types";
 
 export function loadDemo(): DemoState {
   // TODO(BACKEND): leer sesión, espacios y movimientos autorizados; sin entrada, salida DemoState. API por acordar; propagar errores sin sustituir por ceros.
@@ -56,7 +56,26 @@ export function saveUser(user: User, fullName: string): User {
   // TODO(BACKEND): actualizar cuenta autenticada con fullName; salida User; API por acordar, errores sin anunciar éxito.
   return { ...user, fullName: fullName.trim() };
 }
-const storageKey = "smart-solutions-demo-v1";
+export function saveReceivable(
+  receivable: Omit<Receivable, "id" | "paidMinor"> & { id?: string },
+): Receivable {
+  if (
+    !receivable.customer.trim() ||
+    !Number.isSafeInteger(receivable.amountMinor) ||
+    receivable.amountMinor <= 0
+  )
+    throw new Error("Indica el cliente y un importe mayor que cero.");
+  // TODO(BACKEND): crear fiado con spaceId, customer, description, amountMinor y createdAt; salida Receivable con id del servidor. Validar sesión y pertenencia del espacio.
+  return {
+    ...receivable,
+    customer: receivable.customer.trim().slice(0, 60),
+    description: receivable.description.trim().slice(0, 120) || "Venta fiada",
+    paidMinor: 0,
+    id: receivable.id ?? crypto.randomUUID(),
+  };
+}
+// v2: agrega fiados; una demo guardada con v1 vuelve a los datos de ejemplo.
+const storageKey = "smart-solutions-demo-v2";
 
 export function loadStoredDemo(): DemoState | null {
   // TODO(BACKEND): reemplazar por la lectura autenticada de loadDemo; localStorage solo conserva la demo en este navegador.
@@ -64,9 +83,9 @@ export function loadStoredDemo(): DemoState | null {
     const stored = window.localStorage.getItem(storageKey);
     if (!stored) return null;
     const state = JSON.parse(stored) as DemoState;
-    return Array.isArray(state.spaces) && Array.isArray(state.movements)
-      ? state
-      : null;
+    if (!Array.isArray(state.spaces) || !Array.isArray(state.movements))
+      return null;
+    return { ...state, receivables: state.receivables ?? [] };
   } catch {
     return null;
   }

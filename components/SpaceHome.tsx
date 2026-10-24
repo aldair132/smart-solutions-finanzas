@@ -1,23 +1,41 @@
 "use client";
 import Link from "next/link";
-import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
 import { AiCaptureDialog } from "./AiCaptureDialog";
 import { useDemo } from "./DemoProvider";
 import { Icon } from "./Icon";
 import { MovementList } from "./MovementList";
 import { MovementDialog, type CaptureMethod } from "./MovementDialog";
 import { PeriodTotals } from "./PeriodTotals";
-import { selectMovements } from "@/lib/finance";
+import { money, selectMovements } from "@/lib/finance";
+import { selectReceivables, summarizeReceivables } from "@/lib/receivables";
 export function SpaceHome({ spaceId }: { spaceId: string }) {
-  const { spaces, movements, aiMode } = useDemo();
+  const { spaces, movements, receivables, aiMode } = useDemo();
   const space = spaces.find((item) => item.id === spaceId);
   const [kind, setKind] = useState<"income" | "expense" | null>(
     space?.type === "personal" ? "expense" : null,
   );
-  const [method, setMethod] = useState<CaptureMethod | null>(null);
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  // La guía de bienvenida abre la captura directamente: ?capturar=voz|foto.
+  const requestedCapture = searchParams.get("capturar");
+  const [method, setMethod] = useState<CaptureMethod | null>(() =>
+    requestedCapture === "voz"
+      ? "voice"
+      : requestedCapture === "foto"
+        ? "image"
+        : null,
+  );
   const [notice, setNotice] = useState("");
   const recentMovements = selectMovements(movements, spaceId).slice(0, 5);
   const todayMovements = selectMovements(movements, spaceId, "today");
+  const receivableSummary = summarizeReceivables(
+    selectReceivables(receivables, spaceId),
+  );
+  useEffect(() => {
+    if (requestedCapture) router.replace(`/espacios/${spaceId}`);
+  }, [requestedCapture, router, spaceId]);
   function openCapture(method: CaptureMethod) {
     if (method === "text" && !kind) {
       setNotice("Para escribir, primero elige venta o gasto.");
@@ -107,6 +125,23 @@ export function SpaceHome({ spaceId }: { spaceId: string }) {
             movements={todayMovements}
             personal={space.type === "personal"}
           />
+          {space.type === "business" && (
+            <Link
+              className="receivable-link"
+              href={`/espacios/${spaceId}/fiados`}
+            >
+              <Icon name="hand" />
+              <span>
+                Fiados por cobrar
+                <strong>{money(receivableSummary.pendingMinor)}</strong>
+              </span>
+              <small>
+                {receivableSummary.pendingCount} cliente
+                {receivableSummary.pendingCount === 1 ? "" : "s"}
+              </small>
+              <Icon name="arrow" />
+            </Link>
+          )}
         </section>
         <section className="recent-panel">
           <div className="section-heading">
@@ -127,7 +162,7 @@ export function SpaceHome({ spaceId }: { spaceId: string }) {
           onClose={() => setMethod(null)}
           onSaved={(count) =>
             setNotice(
-              `${count} movimiento${count === 1 ? "" : "s"} registrado${count === 1 ? "" : "s"}.`,
+              `${count} registro${count === 1 ? "" : "s"} guardado${count === 1 ? "" : "s"}.`,
             )
           }
         />

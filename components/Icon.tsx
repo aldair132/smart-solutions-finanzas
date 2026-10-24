@@ -19,6 +19,10 @@ const paths = {
   settings:
     "M12 3v3m0 12v3M3 12h3m12 0h3M6 6l2 2m8 8 2 2M6 18l2-2m8-8 2-2M16 12a4 4 0 1 1-8 0 4 4 0 0 1 8 0Z",
   close: "m6 6 12 12M6 18 18 6",
+  check: "m5 12 5 5L20 7",
+  speaker:
+    "M4 9h4l5-4v14l-5-4H4ZM16 9a4 4 0 0 1 0 6m2.5-8.5a7.5 7.5 0 0 1 0 11",
+  hand: "M7 11V5a2 2 0 0 1 4 0v5m0-1V4a2 2 0 0 1 4 0v6m0-2a2 2 0 0 1 4 0v6a7 7 0 0 1-7 7h-1a7 7 0 0 1-6-3.5L3 13a2 2 0 0 1 3.4-2L7 12",
 };
 export type IconName = keyof typeof paths;
 export function Icon({

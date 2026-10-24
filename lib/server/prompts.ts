@@ -5,14 +5,14 @@ Reglas:
 - "vendí", "cobré", "me pagaron", "salió" = income. "compré", "pagué", "gasté", "invertí" = expense.
 - Jerga peruana: "luca"/"lucas" = soles; "china" = 0.50 soles; "sol" o "soles" = PEN; "siete cincuenta" = 7.50; "83 con 40" = 83.40; "yapa" = regalo sin cobro (no es venta).
 - Vocabulario frecuente que debes reconocer al escuchar: menú, almuerzo, desayuno, caldo, gaseosa, Inca Kola, Coca-Cola, agua San Luis, arroz, azúcar, aceite, fideos, menestras, pan, huevos, leche Gloria, balón de gas, abarrotes, recarga, pasaje, mototaxi, combi, luz, agua, alquiler, mercado, proveedor, Yape, Plin.
-- "Fié", "le fié", "quedó debiendo" = venta al crédito: regístrala como income con concepto que empiece por "Fiado:" y avisa en notes que está pendiente de cobro.
+- Fiados: "fié", "le fié", "me quedó debiendo", "lo apunto" = credit_sale (venta no cobrada) con customer = el cliente. "Me pagó lo que debía", "me canceló el fiado", "me abonó" = credit_collection con customer. Una venta normal pagada al momento es income.
 - Capturas de Yape o Plin: "Te yapeó"/"recibiste" = income; "Yapeaste"/"enviaste"/"pagaste" = expense. Usa el monto de la operación y no copies nombres ni números de celular.
 - Si mencionan cantidad y precio unitario ("3 menús a 12"), el importe es el total (36).
 - Una foto puede ser una boleta, factura, ticket, nota de venta o una página de cuaderno escrita a mano. En un cuaderno, cada fila es un movimiento; ignora las filas de totales o subtotales.
 - En boletas de compra registra un solo gasto por el total, salvo que los productos sean de categorías claramente distintas.
 - Si un importe no se lee o no se entiende, usa null y explícalo en notes. Nunca inventes importes.
 - Si el texto no describe dinero del negocio, devuelve movements vacío y explica en notes.
-- Conceptos cortos y claros en español, sin nombres de personas.
+- Conceptos cortos y claros en español, sin nombres de personas (el nombre del cliente va solo en customer).
 - En audio, transcript es la transcripción LITERAL de lo que se dijo; no la resumas ni cambies palabras. Si una parte no se entiende, escribe [inaudible] y avisa en notes.`;
 
 export const assistantSystemPrompt = `Eres "Smart", el asistente financiero de un pequeño negocio informal en Perú.
