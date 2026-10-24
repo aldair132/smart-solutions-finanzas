@@ -7,6 +7,9 @@ import { useDemo } from "./DemoProvider";
 import { Dialog } from "./Dialog";
 import { Icon } from "./Icon";
 import { WelcomeGuide } from "./WelcomeGuide";
+import { AssistantDialog } from "./AssistantDialog";
+import { SpaceTabs } from "./SpaceTabs";
+import { readLastSpaceId } from "@/lib/lastSpace";
 import { money, selectMovements, totals } from "@/lib/finance";
 import { useTodayLabel } from "@/hooks/useTodayLabel";
 
@@ -15,6 +18,8 @@ export function Overview() {
   const [isAdding, setIsAdding] = useState(false);
   const [name, setName] = useState("");
   const [error, setError] = useState("");
+  const [isAssistantOpen, setIsAssistantOpen] = useState(false);
+  const [lastSpaceId] = useState(readLastSpaceId);
   const router = useRouter();
   const todayLabel = useTodayLabel();
   function handleCreate(event: FormEvent<HTMLFormElement>) {
@@ -33,8 +38,13 @@ export function Overview() {
   }
   if (!isReady) return <main className="page" aria-busy="true">Cargando tus espacios…</main>;
   const summary = totals(selectMovements(movements, undefined, "today"));
+  // La barra y el asistente abren el último negocio usado (o el primero).
+  const targetSpace =
+    spaces.find((space) => space.id === lastSpaceId) ??
+    spaces.find((space) => space.type === "business") ??
+    spaces[0];
   return (
-    <main className="overview page">
+    <main className="overview page with-tabs">
       <div className="welcome">
         <div>
           <p className="eyebrow">TODO EMPIEZA CON UN PEQUEÑO PASO</p>
@@ -165,6 +175,28 @@ export function Overview() {
       <p className="demo-note">
         Datos de ejemplo · Cambios locales en este navegador.
       </p>
+      {targetSpace && (
+        <>
+          <button
+            className="assistant-fab"
+            onClick={() => setIsAssistantOpen(true)}
+          >
+            <Icon name="help" />
+            <span>Pregúntale a Smart</span>
+          </button>
+          {isAssistantOpen && (
+            <AssistantDialog
+              spaceId={targetSpace.id}
+              onClose={() => setIsAssistantOpen(false)}
+            />
+          )}
+          <SpaceTabs
+            spaceId={targetSpace.id}
+            spaceName={targetSpace.name}
+            activeSuffix={null}
+          />
+        </>
+      )}
       {isAdding && (
         <Dialog
           title="Agregar negocio"

@@ -35,6 +35,23 @@ function topExpenseCategories(movements: Movement[]) {
     .map(([category, amountMinor]) => `${category}: ${money(amountMinor)}`);
 }
 
+// Productos de las boletas recientes, para responder «¿cuánto gasté en arroz?».
+function describeReceiptItems(spaceMovements: Movement[]) {
+  return spaceMovements
+    .filter((movement) => movement.items?.length)
+    .slice(0, 10)
+    .map(
+      (movement) =>
+        `${movement.occurredAt.slice(0, 10)} ${movement.kind === "income" ? "venta" : "compra"}${movement.issuer ? ` en ${movement.issuer}` : ""} (${money(movement.amountMinor)}): ${movement
+          .items!.slice(0, 15)
+          .map(
+            (item) =>
+              `${item.quantity ? `${item.quantity} × ` : ""}${item.description} ${money(item.amountMinor)}`,
+          )
+          .join("; ")}`,
+    );
+}
+
 function describeReceivables(spaceReceivables: Receivable[]) {
   const summary = summarizeReceivables(spaceReceivables);
   return {
@@ -109,6 +126,10 @@ export function buildAssistantContext(
             (movement) =>
               `${movement.occurredAt.slice(0, 16)} ${movement.kind === "income" ? "venta" : "gasto"} ${movement.description} ${money(movement.amountMinor)}`,
           ),
+        detalleDeBoletas:
+          space.id === currentSpaceId
+            ? describeReceiptItems(spaceMovements)
+            : undefined,
         fiados:
           space.type === "business"
             ? describeReceivables(selectReceivables(receivables, space.id))
@@ -123,7 +144,9 @@ export function buildAssistantContext(
           ventasPromedioMensual: money(profile.avgMonthlyIncomeMinor),
           margenPorcentaje: profile.marginPercent,
           diasConRegistro: profile.activeDays,
-          cuotaReferencial: profile.hasHistory ? money(profile.paymentCapacityMinor) : null,
+          cuotaReferencial: profile.hasHistory
+            ? money(profile.paymentCapacityMinor)
+            : null,
         },
       };
     }),

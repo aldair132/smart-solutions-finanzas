@@ -1,7 +1,7 @@
 import { saveMovement, saveReceivable } from "./demoService";
 import { money } from "./finance";
 import { findOpenReceivable, findOpenReceivables, getReceivableBalance } from "./receivables";
-import type { CaptureSource, DemoState, DraftKind, Movement } from "./types";
+import type { CaptureSource, DemoState, DraftKind, Movement, ReceiptItem } from "./types";
 
 export type CollectionInput = {
   amountMinor: number;
@@ -16,6 +16,8 @@ export type CaptureEntry = {
   category: string;
   amountMinor: number;
   occurredAt: string;
+  issuer?: string;
+  items?: ReceiptItem[];
 };
 
 export type CaptureInput = {
@@ -117,6 +119,8 @@ export function saveDemoCapture(state: DemoState, input: CaptureInput): DemoStat
         category: entry.category,
         occurredAt: entry.occurredAt,
         source: input.source,
+        ...(entry.issuer && { issuer: entry.issuer }),
+        ...(entry.items?.length && { items: entry.items }),
       });
       nextState = { ...nextState, movements: [...nextState.movements, movement] };
     }

@@ -68,6 +68,13 @@ export const initialState: DemoState = {
       description: "Limpieza",
       category: "Insumos",
       occurredAt: "2026-10-23T08:50:00-05:00",
+      source: "image",
+      issuer: "Distribuidora Ejemplo",
+      items: [
+        { description: "Detergente 500 g", quantity: 2, amountMinor: 800 },
+        { description: "Lejía 1 L", quantity: 1, amountMinor: 400 },
+        { description: "Esponjas", quantity: 3, amountMinor: 300 },
+      ],
     },
     {
       id: "5",
@@ -185,6 +192,8 @@ export function getDemoExtraction(
               category: "Mercadería",
               photoIndex: 1,
               date: null,
+              issuer: null,
+              items: [],
             },
           ]
         : [
@@ -196,6 +205,8 @@ export function getDemoExtraction(
               category: "Ventas",
               photoIndex: null,
               date: null,
+              issuer: null,
+              items: [],
             },
             {
               kind: "expense",
@@ -205,6 +216,8 @@ export function getDemoExtraction(
               category: "Servicios",
               photoIndex: null,
               date: null,
+              issuer: null,
+              items: [],
             },
           ],
   };

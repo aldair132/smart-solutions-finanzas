@@ -7,6 +7,7 @@ import { isCollectionMovement } from "@/lib/demoTransactions";
 import type { Movement, Space } from "@/lib/types";
 import { useDemo } from "./DemoProvider";
 import { Dialog } from "./Dialog";
+import { ReceiptItems } from "./ReceiptItems";
 export type CaptureMethod = "voice" | "image" | "text";
 export function MovementDialog({
   space,
@@ -61,6 +62,8 @@ export function MovementDialog({
         occurredAt: `${date}:00-05:00`,
         category: movement?.category,
         source: movement?.source ?? method,
+        issuer: movement?.issuer,
+        items: movement?.items,
       });
       onSaved?.();
       onClose();
@@ -104,6 +107,13 @@ export function MovementDialog({
               </>
             )}
           </dl>
+          {movement.items && (
+            <ReceiptItems
+              items={movement.items}
+              issuer={movement.issuer}
+              defaultOpen
+            />
+          )}
           {isCollection ? (
             <p className="muted">Este cobro está vinculado a un fiado. Su edición está deshabilitada para conservar el saldo correcto.</p>
           ) : (

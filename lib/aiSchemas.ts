@@ -56,6 +56,22 @@ export const extractionSchema = z.object({
         .describe(
           "Nombre del emisor impreso en el comprobante; null en voz o texto",
         ),
+      items: z
+        .array(
+          z.object({
+            description: z.string().describe("Producto, máximo 5 palabras"),
+            quantity: z
+              .number()
+              .nullable()
+              .describe("Cantidad impresa; null si no aparece"),
+            amountSoles: z
+              .number()
+              .describe("Importe de la línea en soles (cantidad × precio)"),
+          }),
+        )
+        .describe(
+          "Productos de una boleta, factura o ticket; vacío en cuadernos, pagos digitales, voz o texto",
+        ),
     }),
   ),
 });

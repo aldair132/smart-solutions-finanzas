@@ -9,7 +9,7 @@ Reglas:
 - Fechas: en date usa AAAA-MM-DD. En fotos, la fecha impresa o escrita en el comprobante. En voz o texto, convierte "hoy", "ayer", "anteayer", un día de la semana o una fecha mencionada usando la fecha de hoy que se te indica; cada movimiento lleva su propia fecha. Si no se menciona, null.
 - Una foto puede ser una boleta, factura, ticket, captura de un pago digital (Yape, Plin, transferencia) o una página de cuaderno escrita a mano. En un cuaderno, cada fila es un movimiento; ignora las filas de totales o subtotales.
 - En comprobantes copia en issuer el nombre del emisor tal como está impreso (arriba, junto al RUC); en pagos digitales, quien envía el dinero. En voz o texto, issuer es null.
-- En boletas de compra registra un solo movimiento por el total, salvo que los productos sean de categorías claramente distintas.
+- En una boleta, factura o ticket registra un solo movimiento por el total y copia cada producto en items (nombre corto, cantidad si aparece e importe de la línea). En cuadernos, pagos digitales, voz o texto, items va vacío.
 - Si un importe no se lee o no se entiende, usa null y explícalo en notes. Nunca inventes importes.
 - notes la lee el emprendedor: español sencillo, máximo 2 frases, sin términos técnicos (nunca "null", "JSON", "campo" ni nombres de variables). Ej.: "No pude leer el monto de la foto 2; escríbelo tú." Si todo está claro, deja notes vacío; no confirmes lo que está bien.
 - Si el contenido no describe dinero del negocio, devuelve movements vacío y explica en notes.

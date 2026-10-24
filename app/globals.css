@@ -460,6 +460,9 @@ select:focus-visible {
   padding-top: 24px;
   padding-bottom: 115px;
 }
+.with-tabs {
+  padding-bottom: 115px;
+}
 .space-top {
   display: flex;
   align-items: center;
@@ -1617,6 +1620,47 @@ form select:focus-visible {
   font-size: 14px;
   display: grid;
   gap: 6px;
+}
+.receipt-items {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: #fbfdfb;
+  font-size: 14px;
+}
+.receipt-items summary {
+  cursor: pointer;
+  padding: 10px 14px;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  color: var(--green);
+  font-weight: 700;
+}
+.receipt-items ul {
+  list-style: none;
+  margin: 0;
+  padding: 0 14px;
+}
+.receipt-items li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+  border-top: 1px dashed var(--border);
+}
+.receipt-items li b {
+  color: var(--muted);
+  font-weight: 600;
+}
+.receipt-items-total {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 14px 12px;
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+}
+.receipt-items-total strong {
+  color: inherit;
 }
 .date-notice {
   padding: 12px 14px;

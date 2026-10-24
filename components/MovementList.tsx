@@ -42,6 +42,9 @@ export function MovementList({
                   ? `${displayDate(movement.occurredAt)} · `
                   : ""}
                 {displayTime(movement.occurredAt)}
+                {movement.items?.length
+                  ? ` · ${movement.items.length} producto${movement.items.length === 1 ? "" : "s"}`
+                  : ""}
               </small>
             </span>
             <strong

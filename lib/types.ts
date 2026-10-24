@@ -6,6 +6,12 @@ export type Space = {
   timeZone: string;
 };
 export type CaptureSource = "voice" | "image" | "text";
+// Línea de un comprobante con varios productos (precio total de la línea).
+export type ReceiptItem = {
+  description: string;
+  quantity: number | null;
+  amountMinor: number;
+};
 export type Movement = {
   id: string;
   spaceId: string;
@@ -16,6 +22,8 @@ export type Movement = {
   category?: string;
   source?: CaptureSource;
   receivableId?: string;
+  issuer?: string;
+  items?: ReceiptItem[];
 };
 export type User = { id: string; fullName: string };
 // Venta al crédito ("fiado"): no es dinero en caja hasta que se cobra.
@@ -54,6 +62,8 @@ export type MovementDraft = {
   category: string;
   photoIndex: number | null;
   date: string | null;
+  issuer: string | null;
+  items: ReceiptItem[];
 };
 export type ExtractionResult = {
   mode: AiMode;

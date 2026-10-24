@@ -1,5 +1,5 @@
 import { getBusinessDay, isValidBusinessDay } from "./businessDate";
-import type { DraftKind, ExtractionResult } from "./types";
+import type { DraftKind, ExtractionResult, ReceiptItem } from "./types";
 
 export type EditableDraft = {
   key: string;
@@ -10,6 +10,8 @@ export type EditableDraft = {
   description: string;
   amount: string;
   category: string;
+  issuer: string;
+  items: ReceiptItem[];
 };
 export type DraftField = "description" | "amount" | "customer" | "date";
 // Los errores impiden guardar; los avisos solo piden atención.
@@ -61,6 +63,8 @@ export function toEditableDrafts(result: ExtractionResult): EditableDraft[] {
     amount:
       draft.amountMinor === null ? "" : (draft.amountMinor / 100).toFixed(2),
     category: draft.category,
+    issuer: draft.issuer ?? "",
+    items: draft.items,
   }));
 }
 
@@ -74,6 +78,8 @@ export function createEmptyDraft(kind: DraftKind): EditableDraft {
     description: "",
     amount: "",
     category: kind === "expense" ? "Otros" : "Ventas",
+    issuer: "",
+    items: [],
   };
 }
 
@@ -116,9 +122,19 @@ export function validateDraft(
     errors.amount = "El monto parece demasiado alto.";
   else if (amountMinor >= largeAmountMinor)
     warnings.amount = "Monto alto: verifica que no falte un punto decimal.";
+  else if (draft.items.length) {
+    const itemsMinor = sumItems(draft.items);
+    // Tolera redondeos y descuentos pequeños de la boleta.
+    if (Math.abs(itemsMinor - amountMinor) > 50)
+      warnings.amount = `Los productos suman ${(itemsMinor / 100).toFixed(2)}: revisa el total.`;
+  }
   if (!isPersonal && isCreditKind(draft.kind) && !draft.customer.trim())
     errors.customer = "Indica a quién le fiaste o quién te pagó.";
   return { errors, warnings };
+}
+
+export function sumItems(items: ReceiptItem[]) {
+  return items.reduce((sum, item) => sum + item.amountMinor, 0);
 }
 
 export function hasErrors(validation: DraftValidation) {

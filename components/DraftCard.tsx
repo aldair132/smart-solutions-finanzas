@@ -14,6 +14,7 @@ import {
 } from "@/lib/draftReview";
 import { displayDate, money } from "@/lib/finance";
 import type { DraftKind } from "@/lib/types";
+import { ReceiptItems } from "./ReceiptItems";
 import { Icon } from "./Icon";
 
 type DraftCardProps = {
@@ -146,6 +147,7 @@ export function DraftCard({
           )}
         </div>
       </div>
+      <ReceiptItems items={draft.items} issuer={draft.issuer} />
       <div className="draft-actions">
         <button
           type="button"

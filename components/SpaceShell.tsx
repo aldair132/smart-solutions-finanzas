@@ -1,11 +1,13 @@
 "use client";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { AssistantDialog } from "./AssistantDialog";
 import { useDemo } from "./DemoProvider";
-import { Icon, type IconName } from "./Icon";
+import { Icon } from "./Icon";
 import { displayDate } from "@/lib/finance";
+import { saveLastSpaceId } from "@/lib/lastSpace";
+import { SpaceTabs } from "./SpaceTabs";
 import { SpaceSelector } from "./SpaceSelector";
 export function SpaceShell({
   spaceId,
@@ -28,13 +30,9 @@ export function SpaceShell({
   const returnSection =
     searchParams.get("from") === "credito" ? "/credito" : "";
   const returnHref = `/espacios/${spaceId}${returnSection}`;
-  const tabs: { label: string; suffix: string; icon: IconName }[] = [
-    { label: "Inicio", suffix: "", icon: "home" },
-    { label: "Movimientos", suffix: "/movimientos", icon: "receipt" },
-    { label: "Análisis", suffix: "/analisis", icon: "chart" },
-    { label: "Crédito", suffix: "/credito", icon: "shield" },
-    { label: "Perfil", suffix: "/perfil", icon: "user" },
-  ];
+  useEffect(() => {
+    if (space) saveLastSpaceId(space.id);
+  }, [space]);
   if (!isReady)
     return (
       <main className="page" aria-busy="true">
@@ -104,19 +102,7 @@ export function SpaceShell({
           onClose={() => setIsAssistantOpen(false)}
         />
       )}
-      <nav className="bottom-tabs" aria-label="Navegación del espacio">
-        {tabs.map((tab) => (
-          <Link
-            key={tab.label}
-            href={`/espacios/${spaceId}${tab.suffix}`}
-            className={suffix === tab.suffix ? "active" : ""}
-            aria-current={suffix === tab.suffix ? "page" : undefined}
-          >
-            <Icon name={tab.icon} />
-            <span>{tab.label}</span>
-          </Link>
-        ))}
-      </nav>
+      <SpaceTabs spaceId={spaceId} spaceName={space.name} activeSuffix={suffix} />
     </main>
   );
 }

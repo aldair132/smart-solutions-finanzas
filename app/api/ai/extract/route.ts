@@ -92,6 +92,16 @@ export async function POST(request: Request) {
           movement.date && isoDatePattern.test(movement.date)
             ? movement.date
             : null,
+        issuer: movement.issuer?.trim().slice(0, 80) || null,
+        items: (movement.items ?? [])
+          .filter((item) => item.description.trim() && item.amountSoles > 0)
+          .slice(0, 40)
+          .map((item) => ({
+            description: item.description.trim().slice(0, 60),
+            quantity:
+              item.quantity && item.quantity > 0 ? item.quantity : null,
+            amountMinor: Math.round(item.amountSoles * 100),
+          })),
       })),
     };
     return Response.json(result);

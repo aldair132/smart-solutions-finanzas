@@ -323,6 +323,8 @@ export function AiCaptureDialog({
         description: draft.description,
         category: draft.category,
         occurredAt: getOccurredAt(draft),
+        issuer: draft.issuer.trim(),
+        items: draft.items,
       })),
     });
   }
