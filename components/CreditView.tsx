@@ -1,4 +1,5 @@
 "use client";
+import { MessageDialog } from "./MessageDialog";
 import Link from "next/link";
 import { useState, type CSSProperties } from "react";
 import { useNaturalVoice } from "@/hooks/useNaturalVoice";
@@ -34,7 +35,7 @@ function buildAdviceContext(
     margenPorcentaje: profile.marginPercent,
     diasConRegistro: `${profile.activeDays} de ${profile.windowDays}`,
     estabilidadSemanalPorcentaje: profile.stabilityPercent,
-    tendenciaUltimoMesPorcentaje: profile.trendPercent,
+    tendenciaUltimoMesPorcentaje: profile.hasTrendComparison ? profile.trendPercent : null,
     registrosConFotoPorcentaje: profile.evidencePercent,
     cuotaReferencial: money(profile.paymentCapacityMinor),
     puntaje: profile.score,
@@ -86,6 +87,7 @@ export function CreditView({ spaceId }: { spaceId: string }) {
     ...profile.months.map((month) => month.incomeMinor),
   );
   async function handleAdvice() {
+    if (!profile.hasHistory || isLoadingAdvice) return;
     setIsLoadingAdvice(true);
     setError("");
     try {
@@ -101,6 +103,7 @@ export function CreditView({ spaceId }: { spaceId: string }) {
     }
   }
   async function handleExport() {
+    if (!profile.hasHistory || isExporting) return;
     // Pestaña abierta en el clic (antes de esperar) para que no la bloquee el navegador.
     const previewWindow = window.open("", "_blank");
     setIsExporting(true);
@@ -119,6 +122,31 @@ export function CreditView({ spaceId }: { spaceId: string }) {
       setIsExporting(false);
     }
   }
+  if (!profile.hasHistory)
+    return (
+      <>
+        <div className="view-heading">
+          <p className="eyebrow">TUS REGISTROS, TU HISTORIAL</p>
+          <h1>Perfil para crédito</h1>
+        </div>
+        <section className="credit-empty">
+          <h2>Aún no tienes historial reciente</h2>
+          <p className="subtitle">
+            Registra las ventas y gastos de tu negocio para empezar a construir
+            tu perfil. Usamos los últimos {profile.windowDays} días de actividad.
+          </p>
+          <div className="credit-business-links">
+            <Link className="button primary" href={`/espacios/${space.id}`}>
+              <Icon name="plus" />
+              Registrar movimiento
+            </Link>
+            <Link className="button outline" href={`/espacios/${space.id}/movimientos`}>
+              Ver mis movimientos
+            </Link>
+          </div>
+        </section>
+      </>
+    );
   return (
     <>
       <div className="view-heading">
@@ -238,9 +266,7 @@ export function CreditView({ spaceId }: { spaceId: string }) {
             </button>
           )}
           {error && (
-            <p className="error" role="alert">
-              {error}
-            </p>
+            <MessageDialog tone="error" message={error} onClose={() => setError("")} />
           )}
           {advice && (
             <div className="advice-body">

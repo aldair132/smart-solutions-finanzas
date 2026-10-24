@@ -1,4 +1,4 @@
-import { demoDate } from "./mockData";
+import { getBusinessDay } from "./businessDate";
 import type { Receivable } from "./types";
 
 export type ReceivableSummary = {
@@ -16,8 +16,8 @@ export function getReceivableBalance(receivable: Receivable) {
   return Math.max(0, receivable.amountMinor - receivable.paidMinor);
 }
 
-export function getDaysOpen(receivable: Receivable) {
-  const today = Date.parse(`${demoDate}T23:59:59-05:00`);
+export function getDaysOpen(receivable: Receivable, referenceDay = getBusinessDay()) {
+  const today = Date.parse(`${referenceDay}T23:59:59-05:00`);
   return Math.max(
     0,
     Math.floor((today - Date.parse(receivable.createdAt)) / dayMs),
@@ -58,37 +58,51 @@ export function summarizeReceivables(
     collectionRatePercent: totalMinor
       ? Math.round((collectedMinor / totalMinor) * 100)
       : 0,
-    oldestPendingDays: Math.max(0, ...pending.map(getDaysOpen)),
+    oldestPendingDays: Math.max(0, ...pending.map((receivable) => getDaysOpen(receivable))),
   };
 }
 
-function normalizeName(name: string) {
+export function normalizeCustomerName(name: string) {
   return name
+    .trim()
     .toLocaleLowerCase("es")
     .normalize("NFD")
     .replace(/[̀-ͯ]/g, "")
-    .replace(/\b(sra?|senora?|don|dona|vecin[oa])\.?\s+/g, "")
+    .replace(/^(?:(?:sr|sra|senor|senora|don|dona|vecino|vecina)\.?\s+)+/, "")
+    .replace(/\s+/g, " ")
     .trim();
 }
 
-// Encuentra el fiado pendiente más antiguo de un cliente dicho por voz ("doña Carmen" ≈ "Sra. Carmen").
-export function findOpenReceivable(
+// Nombre completo normalizado: "doña Carmen" ≈ "Sra. Carmen"; "Ana" no coincide con "Mariana".
+export function findOpenReceivables(
   receivables: Receivable[],
   spaceId: string,
   customer: string,
 ) {
-  const wanted = normalizeName(customer);
-  if (!wanted) return undefined;
+  const wanted = normalizeCustomerName(customer);
+  if (!wanted) return [];
   return receivables
     .filter(
       (receivable) =>
         receivable.spaceId === spaceId &&
         getReceivableBalance(receivable) > 0 &&
-        (normalizeName(receivable.customer).includes(wanted) ||
-          wanted.includes(normalizeName(receivable.customer))),
+        normalizeCustomerName(receivable.customer) === wanted,
     )
     .sort(
       (first, second) =>
         Date.parse(first.createdAt) - Date.parse(second.createdAt),
-    )[0];
+    );
+}
+
+export function findOpenReceivable(receivables: Receivable[], spaceId: string, customer: string) {
+  return findOpenReceivables(receivables, spaceId, customer)[0];
+}
+
+export function getCollectionCustomers(receivables: Receivable[], spaceId: string) {
+  const customers = new Map<string, string>();
+  for (const receivable of receivables) {
+    if (receivable.spaceId !== spaceId || getReceivableBalance(receivable) <= 0) continue;
+    customers.set(normalizeCustomerName(receivable.customer), receivable.customer);
+  }
+  return [...customers.values()].sort((first, second) => first.localeCompare(second, "es"));
 }

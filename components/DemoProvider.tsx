@@ -3,9 +3,12 @@ import {
   createContext,
   useContext,
   useEffect,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
+import { useCurrentDay } from "@/hooks/useCurrentDay";
+import { initialState } from "@/lib/mockData";
 import { getAiStatus } from "@/lib/aiService";
 import {
   clearStoredDemo,
@@ -18,11 +21,16 @@ import {
   saveUser,
   storeDemo,
 } from "@/lib/demoService";
-import { getReceivableBalance } from "@/lib/receivables";
+import {
+  collectDemoReceivable,
+  isCollectionMovement,
+  saveDemoCapture,
+  type CaptureInput,
+  type CollectionInput,
+} from "@/lib/demoTransactions";
 import type {
   AiMode,
   AiStatus,
-  CaptureSource,
   DemoState,
   Movement,
   Receivable,
@@ -30,16 +38,12 @@ import type {
 
 type MovementInput = Omit<Movement, "id"> & { id?: string };
 type ReceivableInput = Omit<Receivable, "id" | "paidMinor">;
-type CollectionInput = {
-  receivableId: string;
-  amountMinor: number;
-  occurredAt: string;
-  source: CaptureSource;
-};
 type DemoContextValue = DemoState & {
   // false hasta restaurar lo guardado en el dispositivo (evita mostrar datos de ejemplo un instante).
   isReady: boolean;
+  today: string | null;
   aiMode: AiMode | null;
+  aiStatusFailed: boolean;
   supportsAudio: boolean;
   neuralVoice: boolean;
   updateSpace: (name: string, id?: string) => string;
@@ -48,12 +52,15 @@ type DemoContextValue = DemoState & {
   addMovements: (movements: MovementInput[]) => void;
   addReceivables: (receivables: ReceivableInput[]) => void;
   collectReceivable: (collection: CollectionInput) => void;
+  saveCapture: (input: CaptureInput) => void;
   updateUser: (name: string) => void;
   reset: () => void;
 };
 const DemoContext = createContext<DemoContextValue | null>(null);
 export function DemoProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState(loadDemo);
+  const [state, setState] = useState(() => structuredClone(initialState));
+  const stateRef = useRef(state);
+  const today = useCurrentDay();
   const [aiStatus, setAiStatus] = useState<AiStatus | null>(null);
   // Solo se guarda después de restaurar: si no, los datos de ejemplo
   // sobrescribirían lo guardado (React ejecuta los efectos dos veces en desarrollo).
@@ -61,7 +68,9 @@ export function DemoProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const storedState = loadStoredDemo();
     queueMicrotask(() => {
-      if (storedState) setState(storedState);
+      const restoredState = storedState ?? loadDemo();
+      stateRef.current = restoredState;
+      setState(restoredState);
       setIsRestored(true);
     });
     getAiStatus().then(setAiStatus);
@@ -69,97 +78,81 @@ export function DemoProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (isRestored) storeDemo(state);
   }, [isRestored, state]);
+  // La referencia se actualiza en cada comando: dos cobros antes del próximo render
+  // validan el saldo más reciente. React recibe solo el estado ya validado.
+  function commitState(nextState: DemoState) {
+    stateRef.current = nextState;
+    setState(nextState);
+  }
   function updateSpace(name: string, id?: string) {
-    const space = saveSpace(state.spaces, name, id);
-    setState((current) => ({
+    const current = stateRef.current;
+    const space = saveSpace(current.spaces, name, id);
+    commitState({
       ...current,
       spaces: id
         ? current.spaces.map((item) => (item.id === id ? space : item))
         : [...current.spaces, space],
-    }));
+    });
     return space.id;
   }
-  // Borra el negocio con sus movimientos y fiados.
   function removeSpace(spaceId: string) {
-    const removedId = deleteSpace(state.spaces, spaceId);
-    setState((current) => ({
+    const current = stateRef.current;
+    const removedId = deleteSpace(current.spaces, spaceId);
+    commitState({
       ...current,
       spaces: current.spaces.filter((space) => space.id !== removedId),
-      movements: current.movements.filter(
-        (movement) => movement.spaceId !== removedId,
-      ),
-      receivables: current.receivables.filter(
-        (receivable) => receivable.spaceId !== removedId,
-      ),
-    }));
+      movements: current.movements.filter((movement) => movement.spaceId !== removedId),
+      receivables: current.receivables.filter((receivable) => receivable.spaceId !== removedId),
+    });
   }
   function addMovements(inputs: MovementInput[]) {
+    const current = stateRef.current;
+    const hasCollection = inputs.some((input) => {
+      const existing = current.movements.find((movement) => movement.id === input.id);
+      return Boolean(input.receivableId) || (existing && isCollectionMovement(existing));
+    });
+    if (hasCollection)
+      throw new Error("Los cobros vinculados a fiados no se pueden editar desde Movimientos.");
     const movements = inputs.map(saveMovement);
     const savedIds = new Set(movements.map((movement) => movement.id));
-    setState((current) => ({
+    commitState({
       ...current,
       movements: [
         ...current.movements.filter((item) => !savedIds.has(item.id)),
         ...movements,
       ],
-    }));
+    });
   }
   function addReceivables(inputs: ReceivableInput[]) {
+    const current = stateRef.current;
     const receivables = inputs.map(saveReceivable);
-    setState((current) => ({
-      ...current,
-      receivables: [...current.receivables, ...receivables],
-    }));
+    commitState({ ...current, receivables: [...current.receivables, ...receivables] });
   }
-  // Un cobro registra el dinero que entra (venta en caja) y reduce el saldo del fiado.
   function collectReceivable(collection: CollectionInput) {
-    const receivable = state.receivables.find(
-      (item) => item.id === collection.receivableId,
-    );
-    if (!receivable) throw new Error("No encontramos ese fiado.");
-    const amountMinor = Math.min(
-      collection.amountMinor,
-      getReceivableBalance(receivable),
-    );
-    const movement = saveMovement({
-      spaceId: receivable.spaceId,
-      kind: "income",
-      amountMinor,
-      description: `Cobro de fiado: ${receivable.customer}`,
-      category: "Ventas",
-      occurredAt: collection.occurredAt,
-      source: collection.source,
-    });
-    // TODO(BACKEND): registrar el cobro (receivableId, amountMinor, occurredAt) y el movimiento en una sola transacción.
-    setState((current) => ({
-      ...current,
-      movements: [...current.movements, movement],
-      receivables: current.receivables.map((item) => {
-        if (item.id !== receivable.id) return item;
-        const paidMinor = item.paidMinor + amountMinor;
-        return {
-          ...item,
-          paidMinor,
-          paidAt:
-            paidMinor >= item.amountMinor ? collection.occurredAt : item.paidAt,
-        };
-      }),
-    }));
+    const nextState = collectDemoReceivable(stateRef.current, collection);
+    commitState(nextState);
+  }
+  function saveCapture(input: CaptureInput) {
+    const nextState = saveDemoCapture(stateRef.current, input);
+    commitState(nextState);
   }
   function updateUser(name: string) {
-    const user = saveUser(state.user, name);
-    setState((current) => ({ ...current, user }));
+    const current = stateRef.current;
+    const user = saveUser(current.user, name);
+    commitState({ ...current, user });
   }
   function reset() {
     clearStoredDemo();
-    setState(loadDemo());
+    commitState(loadDemo());
   }
   return (
     <DemoContext.Provider
       value={{
         ...state,
-        isReady: isRestored,
+        isReady: isRestored && today !== null,
+        today,
         aiMode: aiStatus?.mode ?? null,
+        aiStatusFailed: aiStatus?.checkFailed ?? false,
         supportsAudio: aiStatus?.supportsAudio ?? true,
         neuralVoice: aiStatus?.neuralVoice ?? false,
         updateSpace,
@@ -168,6 +161,7 @@ export function DemoProvider({ children }: { children: ReactNode }) {
         addMovements,
         addReceivables,
         collectReceivable,
+        saveCapture,
         updateUser,
         reset,
       }}

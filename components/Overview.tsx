@@ -1,4 +1,5 @@
 "use client";
+import { MessageDialog } from "./MessageDialog";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
@@ -10,13 +11,12 @@ import { money, selectMovements, totals } from "@/lib/finance";
 import { useTodayLabel } from "@/hooks/useTodayLabel";
 
 export function Overview() {
-  const { spaces, movements, user, updateSpace } = useDemo();
+  const { spaces, movements, user, updateSpace, isReady } = useDemo();
   const [isAdding, setIsAdding] = useState(false);
   const [name, setName] = useState("");
   const [error, setError] = useState("");
   const router = useRouter();
   const todayLabel = useTodayLabel();
-  const summary = totals(selectMovements(movements, undefined, "today"));
   function handleCreate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     try {
@@ -31,6 +31,8 @@ export function Overview() {
       );
     }
   }
+  if (!isReady) return <main className="page" aria-busy="true">Cargando tus espacios…</main>;
+  const summary = totals(selectMovements(movements, undefined, "today"));
   return (
     <main className="overview page">
       <div className="welcome">
@@ -161,7 +163,7 @@ export function Overview() {
         </aside>
       </div>
       <p className="demo-note">
-        Datos de ejemplo · Tus cambios se guardan en este dispositivo.
+        Datos de ejemplo · Cambios locales en este navegador.
       </p>
       {isAdding && (
         <Dialog
@@ -185,9 +187,7 @@ export function Overview() {
               />
             </label>
             {error && (
-              <p role="alert" className="error">
-                {error}
-              </p>
+              <MessageDialog tone="error" message={error} onClose={() => setError("")} />
             )}
             <button className="button primary" type="submit">
               Crear negocio

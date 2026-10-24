@@ -6,7 +6,7 @@ import type {
   ExtractionResult,
 } from "./types";
 
-export const demoDate = "2026-10-23";
+export const fixtureDate = "2026-10-23";
 export const initialState: DemoState = {
   user: { id: "rosa", fullName: "Rosa Martínez" },
   spaces: [

@@ -149,7 +149,7 @@ export function AnalysisView({ spaceId }: { spaceId: string }) {
           <Kpi
             label="Por cobrar (fiados)"
             value={money(receivableSummary.pendingMinor)}
-            detail={`${receivableSummary.pendingCount} cliente${receivableSummary.pendingCount === 1 ? "" : "s"}`}
+            detail={`${receivableSummary.pendingCount} fiado${receivableSummary.pendingCount === 1 ? "" : "s"} pendiente${receivableSummary.pendingCount === 1 ? "" : "s"}`}
           />
         )}
       </section>

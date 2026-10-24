@@ -1,4 +1,4 @@
-import { demoDate } from "./mockData";
+import { getBusinessDay, isValidBusinessDay } from "./businessDate";
 import type { DraftKind, ExtractionResult } from "./types";
 
 export type EditableDraft = {
@@ -77,13 +77,14 @@ export function createEmptyDraft(kind: DraftKind): EditableDraft {
   };
 }
 
-function validateDate(
+export function validateDate(
   date: string,
+  referenceDay = getBusinessDay(),
 ): Pick<DraftValidation, "errors" | "warnings"> {
-  const today = Date.parse(`${demoDate}T00:00:00-05:00`);
+  const today = Date.parse(`${referenceDay}T00:00:00-05:00`);
   const value = Date.parse(`${date}T00:00:00-05:00`);
   if (!date) return { errors: {}, warnings: {} };
-  if (!Number.isFinite(value))
+  if (!isValidBusinessDay(date))
     return { errors: { date: "Fecha no válida." }, warnings: {} };
   if (value > today)
     return {

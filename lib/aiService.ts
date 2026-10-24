@@ -21,14 +21,16 @@ type ExtractionInput = {
 
 type WavAudio = { mediaType: "audio/wav"; data: string };
 
-async function postJson<Result>(url: string, body: unknown): Promise<Result> {
+async function postJson<Result>(url: string, body: unknown, signal?: AbortSignal): Promise<Result> {
   const response = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
+    signal,
   });
   const payload = (await response.json().catch(() => null)) as
     (Result & { error?: string }) | null;
+  signal?.throwIfAborted();
   if (!response.ok || !payload)
     throw new Error(payload?.error ?? "No pudimos conectar con la IA.");
   return payload;
@@ -37,6 +39,7 @@ async function postJson<Result>(url: string, body: unknown): Promise<Result> {
 export async function getAiStatus(): Promise<AiStatus> {
   try {
     const response = await fetch("/api/ai/status");
+    if (!response.ok) throw new Error("No se pudo consultar la configuración de IA.");
     const payload = (await response.json()) as {
       provider: string | null;
       supportsAudio: boolean;
@@ -48,7 +51,7 @@ export async function getAiStatus(): Promise<AiStatus> {
       neuralVoice: payload.neuralVoice,
     };
   } catch {
-    return { mode: "demo", supportsAudio: true, neuralVoice: false };
+    return { mode: "demo", checkFailed: true, supportsAudio: true, neuralVoice: false };
   }
 }
 
@@ -82,7 +85,7 @@ export async function askAssistant(input: {
   spoken: boolean;
   context: object;
   history: ChatTurn[];
-}): Promise<{
+}, signal?: AbortSignal): Promise<{
   mode: AiMode;
   question: string;
   answer: string;
@@ -96,7 +99,7 @@ export async function askAssistant(input: {
     spoken: input.spoken,
     context: JSON.stringify(input.context),
     history: input.history.slice(-10),
-  });
+  }, signal);
 }
 
 export async function getCreditAdvice(context: object): Promise<CreditAdvice> {

@@ -15,6 +15,7 @@ export type Movement = {
   occurredAt: string;
   category?: string;
   source?: CaptureSource;
+  receivableId?: string;
 };
 export type User = { id: string; fullName: string };
 // Venta al crédito ("fiado"): no es dinero en caja hasta que se cobra.
@@ -29,6 +30,7 @@ export type Receivable = {
   paidAt?: string;
 };
 export type DemoState = {
+  demoSeedDate?: string;
   spaces: Space[];
   movements: Movement[];
   receivables: Receivable[];
@@ -38,6 +40,7 @@ export type Period = "today" | "7d" | "month";
 export type AiMode = "ai" | "demo";
 export type AiStatus = {
   mode: AiMode;
+  checkFailed?: boolean;
   supportsAudio: boolean;
   neuralVoice: boolean;
 };

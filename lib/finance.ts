@@ -1,4 +1,5 @@
-import { demoDate } from "./mockData";
+import { businessTimeZone, getBusinessDay } from "./businessDate";
+import { getMovementRange } from "./movementPeriods";
 import type { Movement, Period } from "./types";
 import type { MovementRange } from "./movementPeriods";
 
@@ -14,17 +15,8 @@ export function totals(movements: Movement[]) {
     .reduce((sum, item) => sum + item.amountMinor, 0);
   return { income, expense, result: income - expense };
 }
-export function dateRange(period: Period) {
-  const startDate =
-    period === "month"
-      ? "2026-10-01"
-      : period === "7d"
-        ? "2026-10-17"
-        : demoDate;
-  return {
-    startAt: `${startDate}T00:00:00-05:00`,
-    endAt: "2026-10-24T00:00:00-05:00",
-  };
+export function dateRange(period: Period, today = getBusinessDay()) {
+  return getMovementRange(period, today);
 }
 export function selectMovements(
   movements: Movement[],
@@ -47,23 +39,18 @@ export function selectMovements(
     );
 }
 export function localDate(value: string) {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/Lima",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date(value));
+  return getBusinessDay(new Date(value));
 }
 export function displayDate(value: string) {
   return new Intl.DateTimeFormat("es-PE", {
-    timeZone: "America/Lima",
+    timeZone: businessTimeZone,
     day: "numeric",
     month: "long",
   }).format(new Date(value));
 }
 export function displayTime(value: string) {
   return new Intl.DateTimeFormat("es-PE", {
-    timeZone: "America/Lima",
+    timeZone: businessTimeZone,
     hour: "2-digit",
     minute: "2-digit",
     hour12: false,

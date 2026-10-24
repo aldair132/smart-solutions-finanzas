@@ -1,7 +1,8 @@
 import { z } from "zod";
+import { getBusinessDay } from "@/lib/businessDate";
 import { checkRateLimit } from "@/lib/server/rateLimit";
 import { extractionSchema } from "@/lib/aiSchemas";
-import { demoDate, getDemoExtraction } from "@/lib/mockData";
+import { getDemoExtraction } from "@/lib/mockData";
 import { generateStructured, getAiProvider } from "@/lib/server/aiProvider";
 import { extractionSystemPrompt } from "@/lib/server/prompts";
 import { decideReceiptKind } from "@/lib/server/receiptRules";
@@ -107,7 +108,7 @@ export async function POST(request: Request) {
 }
 
 function buildExtractionPrompt(input: ExtractionRequest) {
-  const today = `Hoy es ${demoDate}.`;
+  const today = `Hoy es ${getBusinessDay()}.`;
   const spaceContext =
     input.spaceType === "personal"
       ? "Es la cuenta personal: todo movimiento es un gasto (expense)."

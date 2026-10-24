@@ -8,7 +8,7 @@ El mes actual termina al finalizar hoy; los anteriores incluyen el mes completo.
 La selección se conserva en `?period=month&month=YYYY-MM`, también al cambiar
 de espacio. Un mes inválido o fuera de los tres disponibles usa el mes actual.
 Hoy, 7 días, lista, totales y PDF de esta vista comparten estos límites dinámicos.
-Los fixtures y los relojes de las otras vistas no se modifican con este ajuste.
+Todas las vistas comparten ahora el calendario dinámico descrito en docs/06-calendario-demo.md.
 
 ## Objetivo y ruta
 
@@ -77,7 +77,7 @@ app/espacios/[spaceId]/movimientos/page.tsx; components/movements/PeriodFilter.t
 - Fondo #FAFCFA; superficies menta #E8F5EE; acción principal #166534; texto #173B2A; texto secundario #466354; tarjetas blancas; bordes #D6E7DC. Radios 12–16 px. Tipografía sans serif, cuerpo 16 px y etiquetas 14 px.
 - Verificar contraste al implementar, foco visible, etiquetas accesibles y controles táctiles de al menos 44 × 44 px. No comunicar tipos ni errores solo por color.
 - La imagen aprobada es referencia visual; estas reglas concretan el comportamiento. Los tamaños son orientativos, no alturas rígidas.
-- Moneda demo PEN (S/), zona horaria America/Lima. Fijar el reloj de la demo al 23/10/2026 para reproducir los ejemplos; en producción usar fecha dinámica. Mostrar «Datos de ejemplo».
+- Moneda demo PEN (S/), zona horaria America/Lima. Usar la fecha actual de Lima en etiquetas, registros, validaciones, cálculos y PDF. El 23/10/2026 es únicamente el ancla de los fixtures; consultar docs/06-calendario-demo.md. Mostrar «Datos de ejemplo».
 - Una sola fuente de datos: lib/mock-data.ts; tipos en lib/types.ts; cálculos en lib/finance.ts; formato en lib/format.ts. Un proveedor de estado cliente compartido permite reflejar cambios en todas las vistas. Los datos en memoria se reinician al recargar; no simular persistencia remota.
 - Modelo mínimo Space: id, name, type (business | personal), currency. Movement: id, spaceId, kind (income | expense | transfer), amountMinor, description, occurredAt (ISO con zona), category opcional. Importes positivos en céntimos enteros; el tipo determina el signo. Las transferencias requieren vinculación entre origen y destino si se implementan.
 - Filtrar por spaceId antes de calcular totales. Las transferencias internas no cuentan como ventas, ingresos ni gastos. No sumar monedas diferentes. El resultado registrado no es utilidad contable ni saldo disponible.

@@ -1,4 +1,5 @@
 "use client";
+import { MessageDialog } from "./MessageDialog";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -8,10 +9,10 @@ import { Icon } from "./Icon";
 import { MovementList } from "./MovementList";
 import { MovementDialog, type CaptureMethod } from "./MovementDialog";
 import { PeriodTotals } from "./PeriodTotals";
-import { money, selectMovements } from "@/lib/finance";
+import { displayDate, money, selectMovements } from "@/lib/finance";
 import { selectReceivables, summarizeReceivables } from "@/lib/receivables";
 export function SpaceHome({ spaceId }: { spaceId: string }) {
-  const { spaces, movements, receivables, aiMode } = useDemo();
+  const { spaces, movements, receivables, aiMode, aiStatusFailed, today } = useDemo();
   const space = spaces.find((item) => item.id === spaceId);
   const [kind, setKind] = useState<"income" | "expense" | null>(
     space?.type === "personal" ? "expense" : null,
@@ -107,19 +108,19 @@ export function SpaceHome({ spaceId }: { spaceId: string }) {
               cuaderno. La IA prepara el registro; tú confirmas.
             </small>
             <span className={`simulation-label ${aiMode ?? ""}`}>
-              {aiMode === "ai"
-                ? "IA activa"
+              {aiStatusFailed
+                ? "No se pudo comprobar la IA"
+                : aiMode === "ai"
+                ? "IA configurada"
                 : aiMode === "demo"
                   ? "IA en modo demostración"
-                  : "Comprobando IA…"}
+                  : "Consultando configuración…"}
             </span>
           </div>
-          <p role="status" className="status-message">
-            {notice}
-          </p>
+          {notice && <MessageDialog message={notice} onClose={() => setNotice("")} />}
           <div className="section-heading">
             <h2>Hoy</h2>
-            <span className="count-label">23 de octubre</span>
+            <span className="count-label">{today ? displayDate(`${today}T12:00:00-05:00`) : "Hoy"}</span>
           </div>
           <PeriodTotals
             movements={todayMovements}
@@ -136,7 +137,8 @@ export function SpaceHome({ spaceId }: { spaceId: string }) {
                 <strong>{money(receivableSummary.pendingMinor)}</strong>
               </span>
               <small>
-                {receivableSummary.pendingCount} cliente
+                {receivableSummary.pendingCount} fiado
+                {receivableSummary.pendingCount === 1 ? "" : "s"} pendiente
                 {receivableSummary.pendingCount === 1 ? "" : "s"}
               </small>
               <Icon name="arrow" />
