@@ -175,6 +175,8 @@ export function getDemoExtraction(
               description: "Compra de mercadería",
               amountMinor: 8650,
               category: "Mercadería",
+              photoIndex: 1,
+              date: null,
             },
           ]
         : [
@@ -184,6 +186,8 @@ export function getDemoExtraction(
               description: "Venta de 3 menús",
               amountMinor: 3600,
               category: "Ventas",
+              photoIndex: null,
+              date: null,
             },
             {
               kind: "expense",
@@ -191,6 +195,8 @@ export function getDemoExtraction(
               description: "Balón de gas",
               amountMinor: 5000,
               category: "Servicios",
+              photoIndex: null,
+              date: null,
             },
           ],
   };

@@ -14,7 +14,7 @@ export const extractionSchema = z.object({
   transcript: z
     .string()
     .describe(
-      "Audio: transcripción literal palabra por palabra, sin resumir. Imagen: qué comprobante es y su total, en una línea",
+      "Audio: transcripción literal palabra por palabra, sin resumir. Imágenes: qué comprobantes son y sus totales, en una línea",
     ),
   notes: z
     .string()
@@ -38,6 +38,18 @@ export const extractionSchema = z.object({
         .nullable()
         .describe("Importe total en soles; null si no se entiende"),
       category: z.enum(movementCategories),
+      photo: z
+        .number()
+        .nullable()
+        .describe(
+          "Número de la foto de la que sale (Foto 1 = 1); null si no hay fotos",
+        ),
+      date: z
+        .string()
+        .nullable()
+        .describe(
+          "Fecha impresa o escrita en el comprobante en formato AAAA-MM-DD; null si no aparece o no es legible",
+        ),
     }),
   ),
 });

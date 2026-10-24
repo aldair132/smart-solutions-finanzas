@@ -12,7 +12,8 @@ type StructuredRequest<Schema extends z.ZodType> = {
   system: string;
   prompt: string;
   schema: Schema;
-  image?: AiImage;
+  // Cada imagen se etiqueta "Foto N" para que la IA indique de cuál sale cada dato.
+  images?: AiImage[];
   audio?: AiAudio;
 };
 type GeminiModel = { name: string; thinkingLevel: "minimal" | "low" };
@@ -59,17 +60,19 @@ async function generateWithClaude<Schema extends z.ZodType>({
   system,
   prompt,
   schema,
-  image,
+  images = [],
   audio,
 }: StructuredRequest<Schema>): Promise<z.infer<Schema>> {
   const client = new Anthropic();
   const content: Anthropic.ContentBlockParam[] = [];
   if (audio) throw new Error("Claude no procesa audio; usa el dictado.");
-  if (image)
+  images.forEach((image, index) => {
+    content.push({ type: "text", text: `Foto ${index + 1}:` });
     content.push({
       type: "image",
       source: { type: "base64", media_type: image.mediaType, data: image.data },
     });
+  });
   content.push({ type: "text", text: prompt });
   const response = await client.messages.parse({
     model: process.env.ANTHROPIC_MODEL ?? "claude-opus-5-5",
@@ -108,17 +111,18 @@ function isRetryableGeminiFailure(failure: unknown) {
 
 async function callGemini<Schema extends z.ZodType>(
   model: GeminiModel,
-  { system, prompt, schema, image, audio }: StructuredRequest<Schema>,
+  { system, prompt, schema, images = [], audio }: StructuredRequest<Schema>,
 ): Promise<z.infer<Schema>> {
   const jsonSchema = z.toJSONSchema(schema);
   const parts: object[] = [];
   // Gemini rechaza la clave $schema del estándar JSON Schema.
   delete jsonSchema.$schema;
-  for (const media of [image, audio])
-    if (media)
-      parts.push({
-        inlineData: { mimeType: media.mediaType, data: media.data },
-      });
+  images.forEach((image, index) => {
+    parts.push({ text: `Foto ${index + 1}:` });
+    parts.push({ inlineData: { mimeType: image.mediaType, data: image.data } });
+  });
+  if (audio)
+    parts.push({ inlineData: { mimeType: audio.mediaType, data: audio.data } });
   parts.push({ text: prompt });
   const response = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${model.name}:generateContent`,

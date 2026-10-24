@@ -1,22 +1,28 @@
 import { z } from "zod";
 import { checkRateLimit } from "@/lib/server/rateLimit";
 import { extractionSchema } from "@/lib/aiSchemas";
-import { getDemoExtraction } from "@/lib/mockData";
+import { demoDate, getDemoExtraction } from "@/lib/mockData";
 import { generateStructured, getAiProvider } from "@/lib/server/aiProvider";
 import { extractionSystemPrompt } from "@/lib/server/prompts";
 import type { ExtractionResult } from "@/lib/types";
 
+const maxPhotos = 6;
 const requestSchema = z.object({
   sourceType: z.enum(["voice", "image"]),
   spaceType: z.enum(["business", "personal"]),
   spaceName: z.string().trim().max(60).optional(),
   kindHint: z.enum(["income", "expense"]).nullable(),
   text: z.string().trim().max(4000).optional(),
-  image: z
-    .object({
-      mediaType: z.enum(["image/jpeg", "image/png", "image/webp"]),
-      data: z.string().max(6_000_000),
-    })
+  // Hasta 6 fotos en una sola llamada (~4 MB en total, bajo el límite de Vercel).
+  images: z
+    .array(
+      z.object({
+        mediaType: z.enum(["image/jpeg", "image/png", "image/webp"]),
+        data: z.string().max(1_500_000),
+      }),
+    )
+    .min(1)
+    .max(maxPhotos)
     .optional(),
   audio: z
     .object({
@@ -26,6 +32,7 @@ const requestSchema = z.object({
     .optional(),
 });
 type ExtractionRequest = z.infer<typeof requestSchema>;
+const isoDatePattern = /^\d{4}-\d{2}-\d{2}$/;
 
 export async function POST(request: Request) {
   const limited = checkRateLimit(request);
@@ -41,7 +48,7 @@ export async function POST(request: Request) {
       { error: "No escuchamos ningún texto." },
       { status: 400 },
     );
-  if (input.sourceType === "image" && !input.image)
+  if (input.sourceType === "image" && !input.images)
     return Response.json({ error: "Falta la imagen." }, { status: 400 });
   if (!getAiProvider())
     return Response.json(getDemoExtraction(input.sourceType, input.kindHint));
@@ -50,7 +57,7 @@ export async function POST(request: Request) {
       system: extractionSystemPrompt,
       prompt: buildExtractionPrompt(input),
       schema: extractionSchema,
-      image: input.image,
+      images: input.images,
       audio: input.audio,
     });
     const result: ExtractionResult = {
@@ -66,6 +73,16 @@ export async function POST(request: Request) {
             ? Math.round(movement.amountSoles * 100)
             : null,
         category: movement.category,
+        photoIndex:
+          input.images &&
+          movement.photo &&
+          movement.photo <= input.images.length
+            ? movement.photo
+            : null,
+        date:
+          movement.date && isoDatePattern.test(movement.date)
+            ? movement.date
+            : null,
       })),
     };
     return Response.json(result);
@@ -93,5 +110,9 @@ function buildExtractionPrompt(input: ExtractionRequest) {
     return `${spaceContext} ${hint}\nTranscribe fielmente el audio en transcript y extrae los movimientos.`;
   if (input.sourceType === "voice")
     return `${spaceContext} ${hint}\nDictado del usuario: """${input.text}"""`;
-  return `${spaceContext} ${hint}\nExtrae los movimientos de esta imagen.`;
+  const photoCount = input.images?.length ?? 1;
+  const receiptRules = `Para CADA comprobante compara el emisor (el nombre impreso arriba, junto al RUC) con "${input.spaceName ?? ""}": solo si coinciden es venta (income); si lo emite otro negocio o proveedor, para el usuario es una compra (expense), aunque el papel diga "Boleta de venta". Hoy es ${demoDate}: si una fecha tiene más de un año o es posterior a hoy, avísalo en notes.`;
+  if (photoCount === 1)
+    return `${spaceContext} ${hint}\nExtrae los movimientos de la Foto 1. ${receiptRules}`;
+  return `${spaceContext} ${hint}\nHay ${photoCount} fotos. Cada comprobante es independiente: extrae sus movimientos e indica en photo de qué foto sale. ${receiptRules} Si dos fotos muestran el mismo comprobante (mismo número, o mismo total y fecha), regístralo una sola vez y avísalo en notes.`;
 }

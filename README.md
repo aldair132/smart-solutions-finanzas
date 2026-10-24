@@ -27,7 +27,7 @@ Usar un nombre de proyecto neutro: la URL no debe incluir nombres de personas, u
 | Ruta | Función |
 | --- | --- |
 | `/` | Guía de bienvenida de 2 minutos (abre directamente la voz, la foto o el perfil) y resumen de espacios. |
-| `/espacios/[id]` | Registro por **Voz** (se graba el audio y Gemini lo transcribe y ordena en una sola llamada; funciona en cualquier navegador), **Foto** (boleta, ticket o página de cuaderno) o **Escribir**. La IA propone borradores editables; nada se guarda sin confirmar. |
+| `/espacios/[id]` | Registro por **Voz** (se graba el audio y Gemini lo transcribe y ordena en una sola llamada; funciona en cualquier navegador), **Foto** (hasta 6 boletas, tickets, capturas de Yape o páginas de cuaderno a la vez, leídas en una sola llamada; detecta comprobantes repetidos y guarda cada movimiento con la fecha de su boleta) o **Escribir**. La IA propone borradores editables; nada se guarda sin confirmar. |
 | `/espacios/[id]/movimientos` | Historial por periodo, edición y PDF. |
 | `/espacios/[id]/credito` | Perfil para crédito de 90 días: ventas y resultado promedio, margen, constancia, estabilidad, tendencia, comprobantes y cuota referencial; puntaje de preparación 0–100, explicación con IA y **reporte PDF** para la entidad. |
 | `/espacios/[id]/fiados` | Ventas al crédito: quién debe, cuánto y desde cuándo; cobros totales o parciales. Por voz: «Le fié 15 a doña Carmen», «Don Julio me pagó 10». Un fiado no suma a ventas hasta que se cobra. |

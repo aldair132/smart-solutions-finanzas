@@ -49,6 +49,8 @@ export type MovementDraft = {
   description: string;
   amountMinor: number | null;
   category: string;
+  photoIndex: number | null;
+  date: string | null;
 };
 export type ExtractionResult = {
   mode: AiMode;

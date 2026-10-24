@@ -13,7 +13,10 @@ type ExtractionInput = {
 } & (
   | { sourceType: "voice"; text: string }
   | { sourceType: "voice"; audio: WavAudio }
-  | { sourceType: "image"; image: { mediaType: "image/jpeg"; data: string } }
+  | {
+      sourceType: "image";
+      images: { mediaType: "image/jpeg"; data: string }[];
+    }
 );
 
 type WavAudio = { mediaType: "audio/wav"; data: string };

@@ -15,13 +15,18 @@ import { Icon } from "./Icon";
 
 type EditableDraft = {
   key: string;
+  photoIndex: number | null;
+  date: string;
   kind: DraftKind;
   customer: string;
   description: string;
   amount: string;
   category: string;
 };
-type CapturedImage = Awaited<ReturnType<typeof compressImage>>;
+type CapturedImage = Awaited<ReturnType<typeof compressImage>> & {
+  key: string;
+};
+const maxPhotos = 6;
 type ExtractionRequest = Parameters<typeof extractMovementDrafts>[0];
 const draftKindLabels: Record<DraftKind, string> = {
   income: "Venta",
@@ -39,6 +44,8 @@ function toEditableDrafts(result: ExtractionResult): EditableDraft[] {
   return result.drafts.map((draft) => ({
     key: crypto.randomUUID(),
     kind: draft.kind,
+    photoIndex: draft.photoIndex,
+    date: draft.date ?? "",
     customer: draft.customer ?? "",
     description: draft.description,
     amount: draft.amountMinor === null ? "" : String(draft.amountMinor / 100),
@@ -76,7 +83,7 @@ export function AiCaptureDialog({
     supportsAudio,
   } = useDemo();
   const [transcript, setTranscript] = useState("");
-  const [image, setImage] = useState<CapturedImage | null>(null);
+  const [images, setImages] = useState<CapturedImage[]>([]);
   const [drafts, setDrafts] = useState<EditableDraft[] | null>(null);
   const [result, setResult] = useState<{ mode: AiMode; notes: string } | null>(
     null,
@@ -91,14 +98,26 @@ export function AiCaptureDialog({
     runExtraction({ space, kindHint, sourceType: "voice", audio }),
   );
   const isPersonal = space.type === "personal";
-  const isDirty = Boolean(transcript || image || drafts);
-  async function handleImage(file: File | undefined) {
+  const isDirty = Boolean(transcript || images.length || drafts);
+  async function handleImages(fileList: FileList | null) {
+    const files = Array.from(fileList ?? []);
+    const freeSlots = maxPhotos - images.length;
     setError("");
-    if (!file) return;
+    if (!files.length) return;
+    if (files.length > freeSlots)
+      setError(
+        `Puedes leer hasta ${maxPhotos} fotos a la vez; se agregaron las primeras.`,
+      );
     try {
-      setImage(await compressImage(file));
+      const compressed = await Promise.all(
+        files.slice(0, freeSlots).map(async (file) => ({
+          ...(await compressImage(file)),
+          key: crypto.randomUUID(),
+        })),
+      );
+      setImages((current) => [...current, ...compressed].slice(0, maxPhotos));
     } catch {
-      setError("No pudimos abrir esa imagen. Prueba con una foto JPG o PNG.");
+      setError("No pudimos abrir una de las imágenes. Prueba con JPG o PNG.");
     }
   }
   async function runExtraction(request: ExtractionRequest) {
@@ -126,12 +145,12 @@ export function AiCaptureDialog({
       runExtraction({ space, kindHint, sourceType: "voice", text: transcript });
       return;
     }
-    if (image)
+    if (images.length)
       runExtraction({
         space,
         kindHint,
         sourceType: "image",
-        image: { mediaType: image.mediaType, data: image.data },
+        images: images.map(({ mediaType, data }) => ({ mediaType, data })),
       });
   }
   function updateDraft(key: string, changes: Partial<EditableDraft>) {
@@ -147,6 +166,8 @@ export function AiCaptureDialog({
       {
         key: crypto.randomUUID(),
         kind: kindHint ?? "income",
+        photoIndex: null,
+        date: "",
         customer: "",
         description: "",
         amount: "",
@@ -173,7 +194,7 @@ export function AiCaptureDialog({
       return;
     }
     try {
-      saveDrafts(drafts, `${date}:00-05:00`);
+      saveDrafts(drafts);
       onSaved(drafts.length);
       onClose();
     } catch (failure) {
@@ -183,7 +204,12 @@ export function AiCaptureDialog({
     }
   }
   // Ventas y gastos son movimientos; un fiado queda por cobrar y un cobro reduce su saldo.
-  function saveDrafts(confirmedDrafts: EditableDraft[], occurredAt: string) {
+  // Usa la fecha del comprobante si la IA la leyó; si no, la fecha elegida abajo.
+  function getOccurredAt(draft: EditableDraft) {
+    const [defaultDay, defaultTime] = date.split("T");
+    return `${draft.date || defaultDay}T${defaultTime}:00-05:00`;
+  }
+  function saveDrafts(confirmedDrafts: EditableDraft[]) {
     const movements = confirmedDrafts.filter(
       (draft) => isPersonal || !isCreditKind(draft.kind),
     );
@@ -194,7 +220,7 @@ export function AiCaptureDialog({
         amountMinor: parseAmountMinor(draft.amount)!,
         description: draft.description,
         category: draft.category,
-        occurredAt,
+        occurredAt: getOccurredAt(draft),
         source: method,
       })),
     );
@@ -210,7 +236,7 @@ export function AiCaptureDialog({
               ?.customer ?? draft.customer,
           description: draft.description,
           amountMinor: parseAmountMinor(draft.amount)!,
-          createdAt: occurredAt,
+          createdAt: getOccurredAt(draft),
         })),
     );
     for (const draft of confirmedDrafts) {
@@ -224,7 +250,7 @@ export function AiCaptureDialog({
         collectReceivable({
           receivableId: receivable.id,
           amountMinor: parseAmountMinor(draft.amount)!,
-          occurredAt,
+          occurredAt: getOccurredAt(draft),
           source: method,
         });
       else
@@ -235,7 +261,7 @@ export function AiCaptureDialog({
             amountMinor: parseAmountMinor(draft.amount)!,
             description: `Cobro de fiado: ${draft.customer}`,
             category: "Ventas",
-            occurredAt,
+            occurredAt: getOccurredAt(draft),
             source: method,
           },
         ]);
@@ -341,33 +367,79 @@ export function AiCaptureDialog({
           <p className="muted">
             Boleta, factura, ticket o la página de tu cuaderno de cuentas.
           </p>
-          <label className="photo-picker">
-            <Icon name="camera" />
-            {image ? "Cambiar foto" : "Tomar o elegir foto"}
-            <input
-              type="file"
-              accept="image/*"
-              capture="environment"
-              onChange={(event) => handleImage(event.target.files?.[0])}
-            />
-          </label>
-          {image && (
-            <Image
-              unoptimized
-              width={400}
-              height={220}
-              className="capture-preview"
-              src={image.previewUrl}
-              alt="Foto seleccionada"
-            />
+          <div className="photo-pickers">
+            <label className="photo-picker">
+              <Icon name="camera" />
+              Tomar foto
+              <input
+                type="file"
+                accept="image/*"
+                capture="environment"
+                disabled={images.length >= maxPhotos}
+                onChange={(event) => {
+                  handleImages(event.target.files);
+                  event.target.value = "";
+                }}
+              />
+            </label>
+            <label className="photo-picker">
+              <Icon name="plus" />
+              Elegir varias
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                disabled={images.length >= maxPhotos}
+                onChange={(event) => {
+                  handleImages(event.target.files);
+                  event.target.value = "";
+                }}
+              />
+            </label>
+          </div>
+          {images.length > 0 && (
+            <div className="photo-grid">
+              {images.map((image, index) => (
+                <figure key={image.key}>
+                  <Image
+                    unoptimized
+                    width={160}
+                    height={160}
+                    src={image.previewUrl}
+                    alt={`Foto ${index + 1}`}
+                  />
+                  <figcaption>Foto {index + 1}</figcaption>
+                  <button
+                    type="button"
+                    className="photo-remove"
+                    aria-label={`Quitar foto ${index + 1}`}
+                    onClick={() =>
+                      setImages((current) =>
+                        current.filter((item) => item.key !== image.key),
+                      )
+                    }
+                  >
+                    <Icon name="close" />
+                  </button>
+                </figure>
+              ))}
+            </div>
           )}
+          <p className="muted small">
+            {images.length}/{maxPhotos} fotos · la IA las lee todas juntas y
+            avisa si dos son el mismo comprobante.
+          </p>
           <button
             type="button"
             className="button primary"
-            disabled={!image || isProcessing}
+            disabled={!images.length || isProcessing}
             onClick={processCapture}
           >
-            {isProcessing ? "La IA está leyendo…" : "Leer con IA"}
+            {isProcessing
+              ? "La IA está leyendo tus fotos…"
+              : images.length > 1
+                ? `Leer ${images.length} fotos con IA`
+                : "Leer con IA"}
           </button>
         </div>
       )}
@@ -409,6 +481,32 @@ export function AiCaptureDialog({
           {drafts.map((draft) => (
             <fieldset className="draft-card" key={draft.key}>
               <legend className="sr-only">Movimiento</legend>
+              {method === "image" && (
+                <div className="draft-source">
+                  {draft.photoIndex && images[draft.photoIndex - 1] && (
+                    <Image
+                      unoptimized
+                      width={44}
+                      height={44}
+                      src={images[draft.photoIndex - 1].previewUrl}
+                      alt=""
+                    />
+                  )}
+                  <span>
+                    {draft.photoIndex ? `Foto ${draft.photoIndex}` : "Agregado"}
+                  </span>
+                  <label>
+                    Fecha del comprobante
+                    <input
+                      type="date"
+                      value={draft.date}
+                      onChange={(event) =>
+                        updateDraft(draft.key, { date: event.target.value })
+                      }
+                    />
+                  </label>
+                </div>
+              )}
               {!isPersonal && (
                 <div className="draft-kind" role="group" aria-label="Tipo">
                   {(Object.keys(draftKindLabels) as DraftKind[]).map((kind) => (
@@ -506,7 +604,9 @@ export function AiCaptureDialog({
             Agregar otro
           </button>
           <label>
-            Fecha y hora · Lima
+            {method === "image"
+              ? "Fecha y hora si el comprobante no la indica · Lima"
+              : "Fecha y hora · Lima"}
             <input
               required
               type="datetime-local"
