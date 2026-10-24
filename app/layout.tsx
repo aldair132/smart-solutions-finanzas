@@ -27,7 +27,7 @@ export default function RootLayout({
             </span>
             <span className="demo-badge">
               <span />
-              Modo demostración
+              Datos de ejemplo
             </span>
           </header>
           {children}
