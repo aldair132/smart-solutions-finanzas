@@ -169,7 +169,7 @@ export function CreditView({ spaceId }: { spaceId: string }) {
           </div>
           <Link
             className="credit-receivables"
-            href={`/espacios/${space.id}/fiados`}
+            href={`/espacios/${space.id}/fiados?from=credito`}
           >
             <span>Fiados</span>
             <strong>

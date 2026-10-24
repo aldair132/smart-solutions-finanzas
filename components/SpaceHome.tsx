@@ -128,7 +128,7 @@ export function SpaceHome({ spaceId }: { spaceId: string }) {
           {space.type === "business" && (
             <Link
               className="receivable-link"
-              href={`/espacios/${spaceId}/fiados`}
+              href={`/espacios/${spaceId}/fiados?from=inicio`}
             >
               <Icon name="hand" />
               <span>

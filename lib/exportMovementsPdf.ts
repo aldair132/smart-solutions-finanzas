@@ -10,11 +10,12 @@ import {
   setText,
 } from "./pdfTheme";
 import type { Movement, Period, Space } from "./types";
+import type { MovementRange } from "./movementPeriods";
 
 const periodLabels: Record<Period, string> = {
   today: "Hoy",
   "7d": "Últimos 7 días",
-  month: "Este mes",
+  month: "Mes seleccionado",
 };
 // Columnas: fecha, concepto, categoría, tipo, importe (alineado a la derecha).
 const columns = {
@@ -41,10 +42,11 @@ export async function createMovementsPdf(
   space: Space,
   movements: Movement[],
   period: Period,
+  selectedRange?: MovementRange,
 ) {
   const { jsPDF } = await import("jspdf");
   const pdf = new jsPDF();
-  const range = dateRange(period);
+  const range = selectedRange ?? dateRange(period);
   const summary = totals(movements);
   const isPersonal = space.type === "personal";
   const generatedAt = new Date().toLocaleString("es-PE", {
@@ -150,9 +152,10 @@ export async function exportMovementsPdf(
   movements: Movement[],
   period: Period,
   previewWindow: Window | null = null,
+  selectedRange?: MovementRange,
 ) {
-  const pdf = await createMovementsPdf(space, movements, period);
-  const range = dateRange(period);
+  const range = selectedRange ?? dateRange(period);
+  const pdf = await createMovementsPdf(space, movements, period, range);
   await showPdf(
     pdf,
     `movimientos-${space.id}-${range.startAt.slice(0, 10)}-${range.endAt.slice(0, 10)}.pdf`,

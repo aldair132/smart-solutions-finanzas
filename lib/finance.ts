@@ -1,5 +1,6 @@
 import { demoDate } from "./mockData";
 import type { Movement, Period } from "./types";
+import type { MovementRange } from "./movementPeriods";
 
 export function money(amountMinor: number) {
   return `S/ ${(amountMinor / 100).toLocaleString("es-PE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -29,8 +30,9 @@ export function selectMovements(
   movements: Movement[],
   spaceId?: string,
   period?: Period,
+  selectedRange?: MovementRange,
 ) {
-  const range = period ? dateRange(period) : null;
+  const range = selectedRange ?? (period ? dateRange(period) : null);
   return movements
     .filter(
       (item) =>

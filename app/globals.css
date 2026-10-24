@@ -489,20 +489,31 @@ select:focus-visible {
   padding: 4px 13px;
   max-width: 380px;
   min-width: 0;
+  min-height: 54px;
+  text-align: left;
+  transition: background 0.2s, border-color 0.2s;
 }
-.space-selector > span {
+.space-selector:hover {
+  background: #dcefe3;
+  border-color: #8dbb9f;
+}
+.selector-emoji {
   font-size: 27px;
+  flex-shrink: 0;
 }
-.space-selector select {
-  background: transparent;
-  border: 0;
+.selector-name {
   font-size: 15px;
   font-weight: 700;
-  min-height: 44px;
   min-width: 0;
-  width: 100%;
+  flex: 1;
+  overflow-wrap: anywhere;
   color: var(--ink);
-  padding-right: 8px;
+}
+.selector-chevron {
+  width: 18px;
+  height: 18px;
+  transform: rotate(90deg);
+  color: var(--green);
 }
 .space-date {
   font-size: 11px;
@@ -1292,8 +1303,11 @@ input {
     width: 100%;
     padding: 5px 15px;
   }
-  .space-selector select {
+  .selector-name {
     font-size: 17px;
+  }
+  .space-selector + .back-link {
+    margin-top: 8px;
   }
   .view-heading {
     margin-bottom: 23px;

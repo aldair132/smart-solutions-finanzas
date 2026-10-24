@@ -23,6 +23,7 @@ import { useDemo } from "./DemoProvider";
 import { Dialog } from "./Dialog";
 import { DraftCard } from "./DraftCard";
 import { Icon } from "./Icon";
+import { CameraCapture } from "./CameraCapture";
 
 type CapturedImage = Awaited<ReturnType<typeof compressImage>> & {
   key: string;
@@ -62,6 +63,7 @@ export function AiCaptureDialog({
   } = useDemo();
   const [transcript, setTranscript] = useState("");
   const [images, setImages] = useState<CapturedImage[]>([]);
+  const [isCameraOpen, setIsCameraOpen] = useState(false);
   const [drafts, setDrafts] = useState<EditableDraft[] | null>(null);
   const [result, setResult] = useState<{ mode: AiMode; notes: string } | null>(
     null,
@@ -124,7 +126,7 @@ export function AiCaptureDialog({
       setError("No pudimos cargar los ejemplos. Intenta otra vez.");
     }
   }
-  async function handleImages(fileList: FileList | null) {
+  async function handleImages(fileList: FileList | File[] | null) {
     setError("");
     try {
       const compressed = await compressFiles(
@@ -466,23 +468,18 @@ export function AiCaptureDialog({
             </button>
           )}
           <div className="photo-pickers">
-            <label className="photo-picker">
+            <button
+              type="button"
+              className="photo-picker"
+              disabled={images.length >= maxPhotos || isProcessing}
+              onClick={() => setIsCameraOpen(true)}
+            >
               <Icon name="camera" />
               Tomar foto
-              <input
-                type="file"
-                accept="image/*"
-                capture="environment"
-                disabled={images.length >= maxPhotos}
-                onChange={(event) => {
-                  handleImages(event.target.files);
-                  event.target.value = "";
-                }}
-              />
-            </label>
+            </button>
             <label className="photo-picker">
               <Icon name="plus" />
-              Elegir varias
+              Subir imágenes
               <input
                 type="file"
                 accept="image/*"
@@ -495,6 +492,15 @@ export function AiCaptureDialog({
               />
             </label>
           </div>
+          {isCameraOpen && (
+            <CameraCapture
+              onClose={() => setIsCameraOpen(false)}
+              onUsePhoto={(file) => {
+                setIsCameraOpen(false);
+                void handleImages([file]);
+              }}
+            />
+          )}
           {images.length > 0 && (
             <div className="photo-grid">
               {images.map((image, index) => (
