@@ -5,6 +5,7 @@ import { useState, type ReactNode } from "react";
 import { AssistantDialog } from "./AssistantDialog";
 import { useDemo } from "./DemoProvider";
 import { Icon, type IconName } from "./Icon";
+import { SpaceSelector } from "./SpaceSelector";
 export function SpaceShell({
   spaceId,
   children,
@@ -22,6 +23,10 @@ export function SpaceShell({
     ["/movimientos", "/analisis", "/credito", "/fiados", "/perfil"].find(
       (item) => pathname.endsWith(item),
     ) ?? "";
+  // Solo admitimos destinos internos conocidos, nunca una URL arbitraria.
+  const returnSection =
+    searchParams.get("from") === "credito" ? "/credito" : "";
+  const returnHref = `/espacios/${spaceId}${returnSection}`;
   const tabs: { label: string; suffix: string; icon: IconName }[] = [
     { label: "Inicio", suffix: "", icon: "home" },
     { label: "Movimientos", suffix: "/movimientos", icon: "receipt" },
@@ -47,33 +52,38 @@ export function SpaceShell({
   return (
     <main className="page space-page">
       <div className="space-top">
-        <Link className="back-link" href="/">
+        <Link
+          className="back-link"
+          href={suffix === "/fiados" ? returnHref : "/"}
+          replace={suffix === "/fiados"}
+        >
           <Icon name="back" />
-          Mis espacios
+          {suffix === "/fiados" ? "Volver" : "Mis espacios"}
         </Link>
-        <div className="space-selector">
-          <span aria-hidden="true">
-            {space.type === "personal" ? "👛" : "🏪"}
-          </span>
-          <select
-            aria-label="Espacio activo"
-            value={spaceId}
-            onChange={(event) =>
-              router.push(
-                event.target.value === "all"
-                  ? "/"
-                  : `/espacios/${event.target.value}${suffix}${suffix === "/movimientos" ? `?period=${searchParams.get("period") ?? "today"}` : ""}`,
-              )
+        <SpaceSelector
+          spaces={spaces}
+          selectedSpace={space}
+          onSelect={(selectedId) => {
+            const query = new URLSearchParams();
+            if (suffix === "/movimientos") {
+              query.set("period", searchParams.get("period") ?? "today");
+              if (searchParams.get("month")) {
+                query.set("month", searchParams.get("month")!);
+              }
             }
-          >
-            {spaces.map((item) => (
-              <option value={item.id} key={item.id}>
-                {item.name}
-              </option>
-            ))}
-            <option value="all">Ver todos mis espacios</option>
-          </select>
-        </div>
+            if (suffix === "/fiados" && returnSection) {
+              query.set("from", "credito");
+            }
+            router.push(
+              `/espacios/${selectedId}${suffix}${query.size ? `?${query}` : ""}`,
+            );
+          }}
+        />
+        {suffix === "/fiados" && (
+          <Link className="back-link" href="/">
+            Mis espacios
+          </Link>
+        )}
         <span className="space-date">Viernes, 23 de octubre de 2026</span>
       </div>
       {children}

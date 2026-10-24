@@ -2,6 +2,14 @@
 
 Estado: guía de implementación del prototipo. Fecha: 23/10/2026.
 
+Actualización del filtro mensual: Movimientos usa la fecha actual en America/Lima.
+«Elegir mes» ofrece el mes actual y los dos anteriores, con año incluido.
+El mes actual termina al finalizar hoy; los anteriores incluyen el mes completo.
+La selección se conserva en `?period=month&month=YYYY-MM`, también al cambiar
+de espacio. Un mes inválido o fuera de los tres disponibles usa el mes actual.
+Hoy, 7 días, lista, totales y PDF de esta vista comparten estos límites dinámicos.
+Los fixtures y los relojes de las otras vistas no se modifican con este ajuste.
+
 ## Objetivo y ruta
 
 Ruta /espacios/[spaceId]/movimientos. Consultar todos los movimientos del espacio activo dentro de un periodo y descargar un registro PDF coherente con el filtro.

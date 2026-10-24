@@ -1,0 +1,24 @@
+.modal {
+  border: 2px solid #166534;
+  width: min(620px, calc(100vw - 32px));
+}
+.preview {
+  margin: 16px 0;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #132c20;
+  aspect-ratio: 4 / 3;
+}
+.preview video, .preview img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 16px;
+}
+.actions button { flex: 1; }
+.fallback { width: 100%; margin-top: 12px; }

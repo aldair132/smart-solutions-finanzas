@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useId, useRef, type ReactNode } from "react";
 import { Icon } from "./Icon";
 export function Dialog({
   title,
@@ -7,6 +7,7 @@ export function Dialog({
   onClose,
   dirty = false,
   size = "default",
+  className = "",
 }: {
   title: string;
   children: ReactNode;
@@ -14,8 +15,10 @@ export function Dialog({
   dirty?: boolean;
   // "large": ancho cómodo en escritorio y pantalla completa en el celular.
   size?: "default" | "large";
+  className?: string;
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const titleId = useId();
   function requestClose() {
     if (!dirty || window.confirm("¿Descartar los cambios sin guardar?"))
       onClose();
@@ -32,15 +35,17 @@ export function Dialog({
   return (
     <dialog
       ref={dialogRef}
-      className={size === "large" ? "dialog-large" : undefined}
+      className={[size === "large" ? "dialog-large" : "", className]
+        .filter(Boolean)
+        .join(" ")}
       onCancel={(event) => {
         event.preventDefault();
         requestClose();
       }}
-      aria-labelledby="dialog-title"
+      aria-labelledby={titleId}
     >
       <div className="dialog-heading">
-        <h2 id="dialog-title">{title}</h2>
+        <h2 id={titleId}>{title}</h2>
         <button
           className="icon-button"
           aria-label="Cerrar"

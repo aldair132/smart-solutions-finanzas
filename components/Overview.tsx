@@ -7,6 +7,7 @@ import { Dialog } from "./Dialog";
 import { Icon } from "./Icon";
 import { WelcomeGuide } from "./WelcomeGuide";
 import { money, selectMovements, totals } from "@/lib/finance";
+import { useTodayLabel } from "@/hooks/useTodayLabel";
 
 export function Overview() {
   const { spaces, movements, user, updateSpace } = useDemo();
@@ -14,6 +15,7 @@ export function Overview() {
   const [name, setName] = useState("");
   const [error, setError] = useState("");
   const router = useRouter();
+  const todayLabel = useTodayLabel();
   const summary = totals(selectMovements(movements, undefined, "today"));
   function handleCreate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -44,7 +46,7 @@ export function Overview() {
         </div>
         <div className="date-pill">
           <Icon name="calendar" />
-          Hoy · 23 oct.
+          {todayLabel}
         </div>
       </div>
       <WelcomeGuide />
