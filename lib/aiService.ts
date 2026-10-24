@@ -37,13 +37,15 @@ export async function getAiStatus(): Promise<AiStatus> {
     const payload = (await response.json()) as {
       provider: string | null;
       supportsAudio: boolean;
+      neuralVoice: boolean;
     };
     return {
       mode: payload.provider ? "ai" : "demo",
       supportsAudio: payload.supportsAudio,
+      neuralVoice: payload.neuralVoice,
     };
   } catch {
-    return { mode: "demo", supportsAudio: true };
+    return { mode: "demo", supportsAudio: true, neuralVoice: false };
   }
 }
 

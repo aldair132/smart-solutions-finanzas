@@ -36,7 +36,11 @@ export type DemoState = {
 };
 export type Period = "today" | "7d" | "month";
 export type AiMode = "ai" | "demo";
-export type AiStatus = { mode: AiMode; supportsAudio: boolean };
+export type AiStatus = {
+  mode: AiMode;
+  supportsAudio: boolean;
+  neuralVoice: boolean;
+};
 export type DraftKind =
   "income" | "expense" | "credit_sale" | "credit_collection";
 export type MovementDraft = {

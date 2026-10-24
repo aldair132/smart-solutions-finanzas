@@ -1,5 +1,9 @@
 import { connection } from "next/server";
-import { getAiProvider, supportsAudio } from "@/lib/server/aiProvider";
+import {
+  getAiProvider,
+  isNeuralVoiceEnabled,
+  supportsAudio,
+} from "@/lib/server/aiProvider";
 
 export async function GET() {
   // Se evalúa en cada petición para reflejar la clave configurada en el servidor.
@@ -7,5 +11,6 @@ export async function GET() {
   return Response.json({
     provider: getAiProvider(),
     supportsAudio: supportsAudio(),
+    neuralVoice: isNeuralVoiceEnabled(),
   });
 }

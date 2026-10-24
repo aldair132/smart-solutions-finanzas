@@ -45,14 +45,12 @@ function buildAdviceContext(
 }
 
 export function CreditView({ spaceId }: { spaceId: string }) {
-  const { spaces, movements, receivables, aiMode, supportsAudio } = useDemo();
+  const { spaces, movements, receivables, neuralVoice } = useDemo();
   const [advice, setAdvice] = useState<CreditAdvice | null>(null);
   const [isLoadingAdvice, setIsLoadingAdvice] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [error, setError] = useState("");
-  const voice = useNaturalVoice({
-    useNeural: aiMode === "ai" && supportsAudio,
-  });
+  const voice = useNaturalVoice({ useNeural: neuralVoice });
   const space = spaces.find((item) => item.id === spaceId);
   if (!space) return null;
   if (space.type === "personal")

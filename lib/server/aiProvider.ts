@@ -39,6 +39,13 @@ export function supportsAudio() {
   return getAiProvider() !== "anthropic";
 }
 
+// Voz neuronal gratuita de Gemini; GEMINI_TTS_ENABLED=false guarda la cuota (p. ej. al probar).
+export function isNeuralVoiceEnabled() {
+  return (
+    getAiProvider() === "gemini" && process.env.GEMINI_TTS_ENABLED !== "false"
+  );
+}
+
 export async function generateStructured<Schema extends z.ZodType>(
   request: StructuredRequest<Schema>,
 ): Promise<z.infer<Schema>> {

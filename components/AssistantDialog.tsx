@@ -50,7 +50,8 @@ export function AssistantDialog({
   spaceId: string;
   onClose: () => void;
 }) {
-  const { spaces, movements, receivables, aiMode, supportsAudio } = useDemo();
+  const { spaces, movements, receivables, aiMode, supportsAudio, neuralVoice } =
+    useDemo();
   const [history, setHistory] = useState<ChatTurn[]>([]);
   const [question, setQuestion] = useState("");
   const [isThinking, setIsThinking] = useState(false);
@@ -61,7 +62,7 @@ export function AssistantDialog({
   const listEndRef = useRef<HTMLDivElement>(null);
   // Conversación por voz solo con Gemini (entiende audio); si no, dictado del navegador.
   const canConverse = aiMode === "ai" && supportsAudio;
-  const voice = useNaturalVoice({ useNeural: canConverse });
+  const voice = useNaturalVoice({ useNeural: neuralVoice });
   const speech = useSpeechRecognition((text) =>
     setQuestion((current) => `${current} ${text}`.trim()),
   );

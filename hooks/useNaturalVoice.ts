@@ -19,17 +19,10 @@ function isNeuralAvailable() {
   return Date.now() > neuralUnavailableUntil;
 }
 
-// Divide en primera frase + resto: la primera parte llega antes y empieza a sonar
-// mientras la segunda se genera en paralelo.
-function splitForSpeech(text: string) {
-  const cleanText = text.replace(/S\/\s?([\d.,]+)/g, "$1 soles").trim();
-  const firstSentenceEnd = cleanText.search(/[.!?](\s|$)/);
-  if (firstSentenceEnd < 0 || firstSentenceEnd > cleanText.length - 20)
-    return [cleanText];
-  return [
-    cleanText.slice(0, firstSentenceEnd + 1).trim(),
-    cleanText.slice(firstSentenceEnd + 1).trim(),
-  ].filter(Boolean);
+// Una sola llamada por respuesta para estirar la cuota gratuita (~10 usos diarios por
+// modelo); la frase de relleno pregrabada cubre la espera.
+function prepareForSpeech(text: string) {
+  return [text.replace(/S\/\s?([\d.,]+)/g, "$1 soles").trim()];
 }
 
 // Prefiere voces neuronales del sistema ("Natural", "Online", "Google") con acento latino.
@@ -132,7 +125,7 @@ export function useNaturalVoice({ useNeural }: { useNeural: boolean }) {
   async function speak(text: string, { onEnd }: SpeakOptions = {}) {
     const pendingFiller = fillerRef.current;
     const controller = new AbortController();
-    const parts = splitForSpeech(text);
+    const parts = prepareForSpeech(text);
     const finish = () => {
       if (controller.signal.aborted) return;
       releaseAudio();

@@ -38,6 +38,7 @@ type CollectionInput = {
 type DemoContextValue = DemoState & {
   aiMode: AiMode | null;
   supportsAudio: boolean;
+  neuralVoice: boolean;
   updateSpace: (name: string, id?: string) => string;
   updateMovement: (movement: MovementInput) => void;
   addMovements: (movements: MovementInput[]) => void;
@@ -141,6 +142,7 @@ export function DemoProvider({ children }: { children: ReactNode }) {
         ...state,
         aiMode: aiStatus?.mode ?? null,
         supportsAudio: aiStatus?.supportsAudio ?? true,
+        neuralVoice: aiStatus?.neuralVoice ?? false,
         updateSpace,
         updateMovement: (movement) => addMovements([movement]),
         addMovements,

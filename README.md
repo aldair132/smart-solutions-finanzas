@@ -55,8 +55,8 @@ Datos de ejemplo: 90 días de historial generados de forma determinista (`lib/mo
 ## Voz: costos y límites
 
 - Pregunta por audio → respuesta en **una sola llamada** a Gemini (~3–4 s).
-- Mientras piensa suena una frase pregrabada (`public/voz/`, sin costo) y la respuesta se sintetiza en dos partes en paralelo.
-- La voz neuronal gratuita permite ~10 usos diarios por modelo; se rota entre `gemini-3.8-flash-lite-tts` y `gemini-3.8-flash-tts`. Al agotarse, la app cambia sola a la mejor voz del navegador. Para el Demo Day conviene activar facturación en Google AI Studio (céntimos por conversación).
+- Mientras piensa suena una frase pregrabada (`public/voz/`, sin costo) y la respuesta se sintetiza en una sola llamada.
+- **Costo cero**: nivel gratuito de Gemini sin facturación (no hay cobros posibles), voz del navegador como respaldo y Vercel Hobby. La voz neuronal gratuita permite ~10 usos diarios por modelo; se rota entre `gemini-3.8-flash-lite-tts` y `gemini-3.8-flash-tts` (~20 respuestas habladas al día). Al agotarse, la app cambia sola a la mejor voz del navegador. `GEMINI_TTS_ENABLED=false` guarda la cuota mientras se prueba.
 
 ## Integraciones que siguen simuladas
 

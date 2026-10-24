@@ -1,20 +1,19 @@
 import { z } from "zod";
-import { getAiProvider } from "@/lib/server/aiProvider";
+import { isNeuralVoiceEnabled } from "@/lib/server/aiProvider";
 import { checkRateLimit } from "@/lib/server/rateLimit";
 import { SpeechQuotaError, synthesizeSpeech } from "@/lib/server/speech";
 
 const requestSchema = z.object({ text: z.string().trim().min(1).max(600) });
 
 export async function POST(request: Request) {
-  // Cada respuesta se lee en 2 partes; por eso este límite es mayor que el del resto.
-  const limited = checkRateLimit(request, "speak", 30);
+  const limited = checkRateLimit(request, "speak", 20);
   if (limited) return limited;
   const parsed = requestSchema.safeParse(
     await request.json().catch(() => null),
   );
   if (!parsed.success)
     return Response.json({ error: "Texto inválido." }, { status: 400 });
-  if (getAiProvider() !== "gemini")
+  if (!isNeuralVoiceEnabled())
     return Response.json(
       { error: "La voz natural requiere Gemini." },
       { status: 501 },
