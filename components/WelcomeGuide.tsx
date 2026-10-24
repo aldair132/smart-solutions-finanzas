@@ -144,7 +144,7 @@ export function WelcomeGuide() {
             Tu navegador no puede reproducir el video.
           </video>
           <p className="muted small">
-            Video de 1 minuto con capturas reales de la app (sin sonido).
+            Video de 1 minuto con narración y capturas reales de la app. Sube el volumen para escuchar a Smart.
           </p>
         </Dialog>
       )}
