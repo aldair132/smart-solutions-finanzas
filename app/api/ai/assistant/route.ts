@@ -1,18 +1,30 @@
 import { z } from "zod";
 import { checkRateLimit } from "@/lib/server/rateLimit";
-import { assistantReplySchema, creditAdviceSchema } from "@/lib/aiSchemas";
+import {
+  assistantReplySchema,
+  creditAdviceSchema,
+  voiceReplySchema,
+} from "@/lib/aiSchemas";
 import { getDemoAssistantAnswer, getDemoCreditAdvice } from "@/lib/mockData";
 import { generateStructured, getAiProvider } from "@/lib/server/aiProvider";
 import {
   assistantSystemPrompt,
   creditSystemPrompt,
+  spokenReplyInstructions,
 } from "@/lib/server/prompts";
 import type { ChatTurn } from "@/lib/types";
 
 const requestSchema = z.discriminatedUnion("task", [
   z.object({
     task: z.literal("chat"),
-    question: z.string().trim().min(1).max(500),
+    question: z.string().trim().max(500).optional(),
+    audio: z
+      .object({
+        mediaType: z.literal("audio/wav"),
+        data: z.string().max(4_000_000),
+      })
+      .optional(),
+    spoken: z.boolean().optional(),
     context: z.string().max(20_000),
     history: z
       .array(
@@ -54,14 +66,47 @@ export async function POST(request: Request) {
         improvements: advice.improvements.slice(0, 3),
       });
     }
+    if (!input.question && !input.audio)
+      return Response.json({ error: "Falta la pregunta." }, { status: 400 });
     if (!hasProvider)
-      return Response.json({ mode: "demo", answer: getDemoAssistantAnswer() });
+      return Response.json({
+        mode: "demo",
+        question: input.question ?? "",
+        answer: getDemoAssistantAnswer(),
+      });
+    const system = input.spoken
+      ? `${assistantSystemPrompt}
+${spokenReplyInstructions}`
+      : assistantSystemPrompt;
+    const basePrompt = `Contexto financiero (JSON):
+${input.context}
+
+Conversación previa:
+${formatHistory(input.history)}`;
+    // Con audio, una sola llamada transcribe la pregunta y responde: menos espera.
+    if (input.audio) {
+      const reply = await generateStructured({
+        system,
+        prompt: `${basePrompt}
+
+La pregunta del usuario está en el audio: transcríbela literalmente en question y respóndela en answer.`,
+        schema: voiceReplySchema,
+        audio: input.audio,
+      });
+      return Response.json({ mode: "ai", ...reply });
+    }
     const reply = await generateStructured({
-      system: assistantSystemPrompt,
-      prompt: `Contexto financiero (JSON):\n${input.context}\n\nConversación previa:\n${formatHistory(input.history)}\n\nPregunta: ${input.question}`,
+      system,
+      prompt: `${basePrompt}
+
+Pregunta: ${input.question}`,
       schema: assistantReplySchema,
     });
-    return Response.json({ mode: "ai", answer: reply.answer });
+    return Response.json({
+      mode: "ai",
+      question: input.question,
+      answer: reply.answer,
+    });
   } catch (failure) {
     console.error("Asistente IA fallido", failure);
     return Response.json(

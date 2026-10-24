@@ -259,7 +259,7 @@ export function AiCaptureDialog({
               onClick={
                 recorder.isRecording
                   ? recorder.stopRecording
-                  : recorder.startRecording
+                  : () => recorder.startRecording()
               }
             >
               <Icon name="mic" />

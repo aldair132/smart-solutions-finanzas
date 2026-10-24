@@ -1,14 +1,24 @@
 "use client";
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type FormEvent,
+} from "react";
 import { useAudioRecorder } from "@/hooks/useAudioRecorder";
+import { useNaturalVoice } from "@/hooks/useNaturalVoice";
 import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
-import { useSpeechSynthesis } from "@/hooks/useSpeechSynthesis";
-import { askAssistant, transcribeAudio } from "@/lib/aiService";
+import { askAssistant } from "@/lib/aiService";
 import { buildAssistantContext } from "@/lib/assistantContext";
 import type { ChatTurn } from "@/lib/types";
 import { useDemo } from "./DemoProvider";
 import { Dialog } from "./Dialog";
 import { Icon } from "./Icon";
+
+type WavAudio = { mediaType: "audio/wav"; data: string };
+type ConversationPhase =
+  "idle" | "listening" | "thinking" | "preparing" | "speaking";
 
 const suggestedQuestions = [
   "¿Cuánto gané esta semana?",
@@ -16,6 +26,13 @@ const suggestedQuestions = [
   "¿Cómo mejoro mi perfil para un crédito?",
   "¿Quién me debe fiado y cuánto?",
 ];
+const phaseCaptions: Record<ConversationPhase, string> = {
+  idle: "Toca y conversa conmigo",
+  listening: "Te escucho… habla y haz una pausa",
+  thinking: "Pensando…",
+  preparing: "Preparando mi respuesta…",
+  speaking: "Hablando · toca para interrumpirme",
+};
 const voiceReplyStorageKey = "smart-solutions-voice-replies";
 
 function readVoiceReplyPreference() {
@@ -38,27 +55,26 @@ export function AssistantDialog({
   const [question, setQuestion] = useState("");
   const [isThinking, setIsThinking] = useState(false);
   const [error, setError] = useState("");
-  const listEndRef = useRef<HTMLDivElement>(null);
-  const [isTranscribing, setIsTranscribing] = useState(false);
   const [isVoiceReplyOn, setIsVoiceReplyOn] = useState(true);
-  const voice = useSpeechSynthesis();
+  const [isConversing, setIsConversing] = useState(false);
+  const isConversingRef = useRef(false);
+  const listEndRef = useRef<HTMLDivElement>(null);
+  // Conversación por voz solo con Gemini (entiende audio); si no, dictado del navegador.
+  const canConverse = aiMode === "ai" && supportsAudio;
+  const voice = useNaturalVoice({ useNeural: canConverse });
   const speech = useSpeechRecognition((text) =>
     setQuestion((current) => `${current} ${text}`.trim()),
   );
-  const recorder = useAudioRecorder(async (audio) => {
-    setIsTranscribing(true);
-    setError("");
-    try {
-      sendQuestion(await transcribeAudio(audio));
-    } catch (failure) {
-      setError(failure instanceof Error ? failure.message : "Sin audio.");
-    } finally {
-      setIsTranscribing(false);
-    }
-  });
-  // Con Gemini se graba audio (cualquier navegador); si no, dictado del navegador.
-  const usesRecorder = aiMode === "ai" && supportsAudio;
-  const isListening = usesRecorder ? recorder.isRecording : speech.isListening;
+  const recorder = useAudioRecorder((audio) => askQuestion({ audio }));
+  const phase: ConversationPhase = recorder.isRecording
+    ? "listening"
+    : isThinking
+      ? "thinking"
+      : voice.status === "loading"
+        ? "preparing"
+        : voice.status === "speaking"
+          ? "speaking"
+          : "idle";
   useEffect(() => {
     listEndRef.current?.scrollIntoView({ block: "end" });
   }, [history, isThinking]);
@@ -79,73 +95,135 @@ export function AssistantDialog({
       // La preferencia solo dura esta sesión.
     }
   }
-  async function sendQuestion(text: string) {
-    const cleanQuestion = text.trim();
-    if (!cleanQuestion || isThinking) return;
+  function listenAgain() {
+    recorder.startRecording({
+      autoStopOnSilence: true,
+      onNoSpeech: () => {
+        endConversation();
+        setError("No te escuché. Toca el círculo cuando quieras seguir.");
+      },
+    });
+  }
+  function startConversation() {
+    isConversingRef.current = true;
+    setIsConversing(true);
+    setError("");
+    voice.stop();
+    listenAgain();
+  }
+  function endConversation() {
+    isConversingRef.current = false;
+    setIsConversing(false);
+    recorder.cancelRecording();
+    voice.stop();
+  }
+  function handleOrbClick() {
+    if (!isConversing) return startConversation();
+    if (phase === "listening") return recorder.stopRecording();
+    if (phase === "speaking" || phase === "preparing") {
+      // Interrumpir: deja de hablar y vuelve a escuchar de inmediato.
+      voice.stop();
+      return listenAgain();
+    }
+  }
+  async function askQuestion(input: { question?: string; audio?: WavAudio }) {
+    const typedQuestion = input.question?.trim();
+    const shouldSpeak = isConversingRef.current || isVoiceReplyOn;
+    if (isThinking || (!typedQuestion && !input.audio)) return;
     speech.stopListening();
     voice.stop();
     setQuestion("");
     setError("");
-    setHistory((current) => [
-      ...current,
-      { role: "user", text: cleanQuestion },
-    ]);
+    if (typedQuestion)
+      setHistory((current) => [
+        ...current,
+        { role: "user", text: typedQuestion },
+      ]);
     setIsThinking(true);
+    // Respuesta inmediata ("A ver, déjame revisar…") mientras la IA piensa.
+    if (shouldSpeak) voice.playFiller();
     try {
       const reply = await askAssistant({
-        question: cleanQuestion,
+        question: typedQuestion,
+        audio: input.audio,
+        spoken: shouldSpeak,
         context: buildAssistantContext(spaces, movements, receivables, spaceId),
         history,
       });
       setHistory((current) => [
         ...current,
+        ...(input.audio
+          ? [{ role: "user" as const, text: reply.question || "(audio)" }]
+          : []),
         { role: "assistant", text: reply.answer },
       ]);
-      if (isVoiceReplyOn) voice.speak(reply.answer);
+      if (shouldSpeak)
+        voice.speak(reply.answer, {
+          onEnd: () => {
+            if (isConversingRef.current) listenAgain();
+          },
+        });
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : "Sin respuesta.");
+      endConversation();
     } finally {
       setIsThinking(false);
     }
   }
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    sendQuestion(question);
+    askQuestion({ question });
   }
   return (
     <Dialog
       title="Tu asistente financiero"
       onClose={() => {
-        voice.stop();
+        endConversation();
         onClose();
       }}
     >
-      {voice.isSupported && (
-        <button
-          type="button"
-          className={`voice-toggle ${isVoiceReplyOn ? "on" : ""}`}
-          aria-pressed={isVoiceReplyOn}
-          onClick={toggleVoiceReply}
-        >
-          <Icon name="speaker" />
-          {isVoiceReplyOn
-            ? "Te respondo en voz alta"
-            : "Respuestas en voz alta: apagadas"}
-        </button>
+      {canConverse && (
+        <section className={`voice-orb-panel ${phase}`} aria-live="polite">
+          <button
+            type="button"
+            className="voice-orb"
+            aria-label={
+              isConversing ? phaseCaptions[phase] : "Conversar por voz"
+            }
+            disabled={phase === "thinking"}
+            onClick={handleOrbClick}
+            style={{ "--level": recorder.level } as CSSProperties}
+          >
+            <Icon name={phase === "speaking" ? "speaker" : "mic"} />
+          </button>
+          <p className="voice-orb-caption">
+            {isConversing ? phaseCaptions[phase] : phaseCaptions.idle}
+          </p>
+          {isConversing && (
+            <button
+              type="button"
+              className="text-button"
+              onClick={endConversation}
+            >
+              Terminar conversación
+            </button>
+          )}
+        </section>
       )}
-      <div className="chat-log" aria-live="polite">
+      <div className="chat-log">
         {!history.length && (
           <div className="chat-welcome">
             <p>
-              Pregúntame por tus ventas, gastos o cómo prepararte para un
-              crédito. Respondo con tus propios registros.
+              {canConverse
+                ? "Pregúntame en voz alta como si conversaras con una amiga, o toca una pregunta:"
+                : "Pregúntame por tus ventas, gastos o cómo prepararte para un crédito:"}
             </p>
             <div className="example-chips">
               {suggestedQuestions.map((item) => (
                 <button
                   type="button"
                   key={item}
-                  onClick={() => sendQuestion(item)}
+                  onClick={() => askQuestion({ question: item })}
                 >
                   {item}
                 </button>
@@ -156,7 +234,7 @@ export function AssistantDialog({
         {history.map((turn, index) => (
           <div key={index} className={`chat-bubble ${turn.role}`}>
             <p>{turn.text}</p>
-            {turn.role === "assistant" && voice.isSupported && (
+            {turn.role === "assistant" && (
               <button
                 type="button"
                 className="listen-button"
@@ -173,7 +251,13 @@ export function AssistantDialog({
           </div>
         ))}
         {isThinking && (
-          <p className="chat-bubble assistant thinking">Pensando…</p>
+          <p className="chat-bubble assistant thinking">
+            <span className="typing-dots" aria-label="Pensando">
+              <i />
+              <i />
+              <i />
+            </span>
+          </p>
         )}
         <div ref={listEndRef} />
       </div>
@@ -192,30 +276,19 @@ export function AssistantDialog({
           }
           maxLength={500}
           onChange={(event) => setQuestion(event.target.value)}
-          placeholder={
-            recorder.isRecording
-              ? `Grabando ${recorder.seconds}s… toca el micrófono para enviar`
-              : isTranscribing
-                ? "Entendiendo tu audio…"
-                : "Escribe o dicta tu pregunta"
-          }
+          placeholder="O escribe tu pregunta"
         />
-        {(usesRecorder || speech.isSupported) && (
+        {!canConverse && speech.isSupported && (
           <button
             type="button"
-            className={`icon-button ${isListening ? "listening" : ""}`}
-            aria-label={isListening ? "Detener y enviar" : "Dictar pregunta"}
-            aria-pressed={isListening}
-            disabled={isTranscribing}
-            onClick={() => {
-              if (usesRecorder)
-                return recorder.isRecording
-                  ? recorder.stopRecording()
-                  : recorder.startRecording();
-              return speech.isListening
-                ? speech.stopListening()
-                : speech.startListening();
-            }}
+            className={`icon-button ${speech.isListening ? "listening" : ""}`}
+            aria-label={
+              speech.isListening ? "Detener dictado" : "Dictar pregunta"
+            }
+            aria-pressed={speech.isListening}
+            onClick={
+              speech.isListening ? speech.stopListening : speech.startListening
+            }
           >
             <Icon name="mic" />
           </button>
@@ -227,6 +300,17 @@ export function AssistantDialog({
           Enviar
         </button>
       </form>
+      <button
+        type="button"
+        className={`voice-toggle ${isVoiceReplyOn ? "on" : ""}`}
+        aria-pressed={isVoiceReplyOn}
+        onClick={toggleVoiceReply}
+      >
+        <Icon name="speaker" />
+        {isVoiceReplyOn
+          ? "Leo en voz alta las respuestas escritas"
+          : "Respuestas escritas sin voz"}
+      </button>
     </Dialog>
   );
 }

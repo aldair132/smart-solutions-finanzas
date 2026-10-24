@@ -2,7 +2,7 @@ type Window = { startedAt: number; count: number };
 
 const windowMs = 60_000;
 // Gemini gratuito admite ~15 llamadas/min por proyecto; 12 por IP deja margen a varios jurados.
-const maxRequestsPerWindow = Number(process.env.AI_RATE_LIMIT_PER_MINUTE ?? 12);
+const defaultLimit = Number(process.env.AI_RATE_LIMIT_PER_MINUTE ?? 12);
 const windows = new Map<string, Window>();
 
 function getClientKey(request: Request) {
@@ -16,8 +16,12 @@ function getClientKey(request: Request) {
 
 // Límite en memoria por instancia del servidor: suficiente para una demo pública.
 // TODO(BACKEND): en producción usar un almacén compartido (Redis/Upstash) y límites por usuario autenticado.
-export function checkRateLimit(request: Request): Response | null {
-  const key = getClientKey(request);
+export function checkRateLimit(
+  request: Request,
+  bucket = "ai",
+  maxRequestsPerWindow = defaultLimit,
+): Response | null {
+  const key = `${bucket}:${getClientKey(request)}`;
   const now = Date.now();
   const current = windows.get(key);
   if (!current || now - current.startedAt > windowMs) {

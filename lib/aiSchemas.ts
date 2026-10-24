@@ -44,14 +44,17 @@ export const extractionSchema = z.object({
 export const assistantReplySchema = z.object({
   answer: z.string().describe("Respuesta breve en español sencillo"),
 });
+export const voiceReplySchema = z.object({
+  question: z
+    .string()
+    .describe("Transcripción literal de la pregunta del audio"),
+  answer: z.string().describe("Respuesta breve en español sencillo"),
+});
 export const creditAdviceSchema = z.object({
   summary: z.string().describe("Dos oraciones sobre la situación del negocio"),
   strengths: z.array(z.string()).describe("Hasta 3 fortalezas concretas"),
   improvements: z
     .array(z.string())
     .describe("Hasta 3 acciones concretas para mejorar el perfil"),
-});
-export const transcriptionSchema = z.object({
-  text: z.string().describe("Transcripción literal del audio"),
 });
 export type Extraction = z.infer<typeof extractionSchema>;

@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useState, type CSSProperties } from "react";
-import { useSpeechSynthesis } from "@/hooks/useSpeechSynthesis";
+import { useNaturalVoice } from "@/hooks/useNaturalVoice";
 import { getCreditAdvice } from "@/lib/aiService";
 import {
   calculateCreditProfile,
@@ -45,12 +45,14 @@ function buildAdviceContext(
 }
 
 export function CreditView({ spaceId }: { spaceId: string }) {
-  const { spaces, movements, receivables } = useDemo();
+  const { spaces, movements, receivables, aiMode, supportsAudio } = useDemo();
   const [advice, setAdvice] = useState<CreditAdvice | null>(null);
   const [isLoadingAdvice, setIsLoadingAdvice] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [error, setError] = useState("");
-  const voice = useSpeechSynthesis();
+  const voice = useNaturalVoice({
+    useNeural: aiMode === "ai" && supportsAudio,
+  });
   const space = spaces.find((item) => item.id === spaceId);
   if (!space) return null;
   if (space.type === "personal")
@@ -234,7 +236,7 @@ export function CreditView({ spaceId }: { spaceId: string }) {
           {advice && (
             <div className="advice-body">
               <p>{advice.summary}</p>
-              {voice.isSupported && (
+              {
                 <button
                   type="button"
                   className="listen-button"
@@ -253,7 +255,7 @@ export function CreditView({ spaceId }: { spaceId: string }) {
                   <Icon name="speaker" />
                   {voice.speakingText ? "Detener" : "Escuchar explicación"}
                 </button>
-              )}
+              }
               <h3>Lo que haces bien</h3>
               <ul>
                 {advice.strengths.map((item) => (

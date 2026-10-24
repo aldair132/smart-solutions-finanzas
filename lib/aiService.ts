@@ -47,11 +47,16 @@ export async function getAiStatus(): Promise<AiStatus> {
   }
 }
 
-export async function transcribeAudio(audio: WavAudio): Promise<string> {
-  const payload = await postJson<{ text: string }>("/api/ai/transcribe", {
-    audio,
+// Voz neuronal del servidor (WAV). Lanza error si no está disponible para usar el respaldo del navegador.
+export async function synthesizeSpeech(text: string, signal: AbortSignal) {
+  const response = await fetch("/api/ai/speak", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text }),
+    signal,
   });
-  return payload.text;
+  if (!response.ok) throw new Error("Voz natural no disponible.");
+  return response.blob();
 }
 
 export async function extractMovementDrafts(
@@ -67,14 +72,18 @@ export async function extractMovementDrafts(
 }
 
 export async function askAssistant(input: {
-  question: string;
+  question?: string;
+  audio?: WavAudio;
+  spoken: boolean;
   context: object;
   history: ChatTurn[];
-}): Promise<{ mode: AiMode; answer: string }> {
+}): Promise<{ mode: AiMode; question: string; answer: string }> {
   // TODO(BACKEND): el contexto debería calcularse en servidor a partir de los movimientos autorizados, no enviarse desde el navegador.
   return postJson("/api/ai/assistant", {
     task: "chat",
     question: input.question,
+    audio: input.audio,
+    spoken: input.spoken,
     context: JSON.stringify(input.context),
     history: input.history.slice(-10),
   });

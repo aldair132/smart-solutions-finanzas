@@ -32,7 +32,7 @@ Usar un nombre de proyecto neutro: la URL no debe incluir nombres de personas, u
 | `/espacios/[id]/credito` | Perfil para crédito de 90 días: ventas y resultado promedio, margen, constancia, estabilidad, tendencia, comprobantes y cuota referencial; puntaje de preparación 0–100, explicación con IA y **reporte PDF** para la entidad. |
 | `/espacios/[id]/fiados` | Ventas al crédito: quién debe, cuánto y desde cuándo; cobros totales o parciales. Por voz: «Le fié 15 a doña Carmen», «Don Julio me pagó 10». Un fiado no suma a ventas hasta que se cobra. |
 | `/espacios/[id]/perfil` | Perfil, configuración y salida de la demo. |
-| Botón «Pregúntale a Smart» | Chat financiero (texto o voz) que responde con los registros del usuario y lee sus respuestas en voz alta (síntesis del navegador, sin costo). |
+| Botón «Pregúntale a Smart» | **Modo conversación por voz**: tocas una vez, hablas, la app detecta la pausa, responde con voz neuronal y vuelve a escucharte (puedes interrumpirla). También acepta preguntas escritas. Responde con los registros del usuario. |
 
 Datos de ejemplo: 90 días de historial generados de forma determinista (`lib/mockHistory.ts`) más los movimientos del 23/10/2026. Los cambios se guardan en `localStorage` del dispositivo; «Salir de la demo» los borra.
 
@@ -40,16 +40,23 @@ Datos de ejemplo: 90 días de historial generados de forma determinista (`lib/mo
 
 - `app/api/ai/extract` — voz (audio WAV o texto) o imagen → `ExtractionResult` validado con zod. Importes inciertos llegan como `null`.
 - `app/api/ai/assistant` — chat (`task: "chat"`) y lectura del perfil (`task: "credit"`).
-- `app/api/ai/transcribe` — audio → texto para dictar preguntas al asistente.
+- `app/api/ai/speak` — voz neuronal de Gemini (WAV) para las respuestas habladas; 30 llamadas/min por IP.
 - `app/api/ai/status` — indica si hay proveedor configurado y si acepta audio.
 - `lib/server/aiProvider.ts` — salida estructurada con Gemini (REST; por defecto `gemini-flash-lite-latest` con razonamiento mínimo, 1–3 s, y `gemini-flash-latest` de respaldo si está saturado) o Claude (SDK oficial). Las claves solo existen en servidor.
 - `lib/server/rateLimit.ts` — 12 llamadas de IA por minuto por IP (`AI_RATE_LIMIT_PER_MINUTE`), para que una URL pública no agote la cuota gratuita.
 - `lib/receivables.ts` — saldos, resumen y búsqueda de fiados por nombre hablado («doña Carmen» ≈ «Sra. Carmen»).
-- `hooks/useSpeechSynthesis.ts` — respuestas habladas con voz en español.
+- `hooks/useNaturalVoice.ts` — reproduce la voz neuronal (primera frase y resto en paralelo) y usa la voz del navegador si falla.
+- `hooks/useAudioRecorder.ts` — en modo conversación detecta cuándo dejas de hablar (energía vs. ruido de fondo) y corta solo.
 - `lib/creditProfile.ts` — indicadores y puntaje, funciones puras y explicables (la IA explica, no calcula).
 - `lib/aiService.ts` — cliente de las rutas y compresión de fotos (máx. 1280 px).
 - `hooks/useAudioRecorder.ts` + `lib/audioEncoding.ts` — graba con MediaRecorder y convierte a WAV mono 16 kHz (máx. 60 s).
 - `hooks/useSpeechRecognition.ts` — dictado del navegador, solo como respaldo cuando el proveedor es Claude (no acepta audio).
+
+## Voz: costos y límites
+
+- Pregunta por audio → respuesta en **una sola llamada** a Gemini (~3–4 s).
+- Mientras piensa suena una frase pregrabada (`public/voz/`, sin costo) y la respuesta se sintetiza en dos partes en paralelo.
+- La voz neuronal gratuita permite ~10 usos diarios por modelo; se rota entre `gemini-3.8-flash-lite-tts` y `gemini-3.8-flash-tts`. Al agotarse, la app cambia sola a la mejor voz del navegador. Para el Demo Day conviene activar facturación en Google AI Studio (céntimos por conversación).
 
 ## Integraciones que siguen simuladas
 
