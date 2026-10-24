@@ -156,7 +156,7 @@ export function AssistantDialog({
         ...(input.audio
           ? [{ role: "user" as const, text: reply.question || "(audio)" }]
           : []),
-        { role: "assistant", text: reply.answer },
+        { role: "assistant", text: reply.answer, followUps: reply.followUps },
       ]);
       if (shouldSpeak)
         voice.speak(reply.answer, {
@@ -177,6 +177,7 @@ export function AssistantDialog({
   }
   return (
     <Dialog
+      size="large"
       title="Tu asistente financiero"
       onClose={() => {
         endConversation();
@@ -249,6 +250,23 @@ export function AssistantDialog({
                 {voice.speakingText === turn.text ? "Detener" : "Escuchar"}
               </button>
             )}
+            {turn.role === "assistant" &&
+              index === history.length - 1 &&
+              turn.followUps &&
+              turn.followUps.length > 0 && (
+                <div className="follow-ups" aria-label="Preguntas sugeridas">
+                  {turn.followUps.map((followUp) => (
+                    <button
+                      type="button"
+                      key={followUp}
+                      disabled={isThinking}
+                      onClick={() => askQuestion({ question: followUp })}
+                    >
+                      {followUp}
+                    </button>
+                  ))}
+                </div>
+              )}
           </div>
         ))}
         {isThinking && (

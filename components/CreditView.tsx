@@ -276,12 +276,13 @@ export function CreditView({ spaceId }: { spaceId: string }) {
             <Icon name="download" />
             {isExporting
               ? "Generando PDF…"
-              : "Descargar reporte para la entidad"}
+              : "Descargar reporte para crédito (PDF)"}
           </button>
           <p className="muted small">
             {/* TODO(BACKEND): compartir el reporte con una entidad requiere consentimiento explícito, firma y registro de acceso; hoy solo se descarga en el dispositivo. */}
-            El reporte se genera en tu dispositivo. Tú decides con quién
-            compartirlo.
+            Resumen formal de 2 páginas para la caja o cooperativa: puntaje,
+            indicadores, gráfico y declaración para firmar. El detalle de
+            cada registro está en Movimientos. Se genera en tu dispositivo.
           </p>
         </section>
       </div>

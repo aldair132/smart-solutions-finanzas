@@ -58,7 +58,11 @@ export type ExtractionResult = {
   notes: string;
   drafts: MovementDraft[];
 };
-export type ChatTurn = { role: "user" | "assistant"; text: string };
+export type ChatTurn = {
+  role: "user" | "assistant";
+  text: string;
+  followUps?: string[];
+};
 export type CreditAdvice = {
   mode: AiMode;
   summary: string;

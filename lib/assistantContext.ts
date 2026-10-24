@@ -1,3 +1,4 @@
+import { calculateAnalytics } from "./analytics";
 import { calculateCreditProfile } from "./creditProfile";
 import { money, selectMovements, totals } from "./finance";
 import { demoDate } from "./mockData";
@@ -49,6 +50,29 @@ function describeReceivables(spaceReceivables: Receivable[]) {
   };
 }
 
+function describeAnalytics(spaceMovements: Movement[]) {
+  const analytics = calculateAnalytics(spaceMovements);
+  const bestDay = [...analytics.weekdays].sort(
+    (first, second) => second.averageMinor - first.averageMinor,
+  )[0];
+  return {
+    ventasDelMes: money(analytics.monthIncomeMinor),
+    variacionVentasVsMesPasadoPorcentaje: analytics.incomeChangePercent,
+    gananciaDelMes: money(analytics.monthResultMinor),
+    margenPorcentaje: analytics.marginPercent,
+    proyeccionVentasCierreMes: money(analytics.projectedIncomeMinor),
+    proyeccionGananciaCierreMes: money(analytics.projectedResultMinor),
+    ventaPromedio: money(analytics.averageTicketMinor),
+    mejorDiaDeVentas: bestDay?.averageMinor ? bestDay.name : null,
+    ultimas4Semanas: analytics.weeks
+      .slice(-4)
+      .map(
+        (week) =>
+          `semana del ${week.label}: ventas ${money(week.incomeMinor)}, gastos ${money(week.expenseMinor)}`,
+      ),
+  };
+}
+
 // Resumen compacto para el asistente: cifras ya calculadas, nunca la lista completa.
 export function buildAssistantContext(
   spaces: Space[],
@@ -88,6 +112,10 @@ export function buildAssistantContext(
         fiados:
           space.type === "business"
             ? describeReceivables(selectReceivables(receivables, space.id))
+            : undefined,
+        analisis:
+          space.type === "business"
+            ? describeAnalytics(spaceMovements)
             : undefined,
         perfilCredito: profile && {
           puntaje: profile.score,

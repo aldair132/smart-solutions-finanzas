@@ -1,6 +1,8 @@
 "use client";
+import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { Dialog } from "./Dialog";
 import { Icon, type IconName } from "./Icon";
 
 type GuideStep = {
@@ -45,6 +47,7 @@ function readIsHidden() {
 
 export function WelcomeGuide() {
   const [isHidden, setIsHidden] = useState(false);
+  const [isVideoOpen, setIsVideoOpen] = useState(false);
   useEffect(() => {
     const hidden = readIsHidden();
     queueMicrotask(() => setIsHidden(hidden));
@@ -69,16 +72,36 @@ export function WelcomeGuide() {
     );
   return (
     <section className="welcome-guide" aria-labelledby="welcome-guide-title">
-      <div className="welcome-guide-heading">
-        <p className="eyebrow">PRUÉBALO EN 2 MINUTOS · DATOS DE EJEMPLO</p>
-        <h2 id="welcome-guide-title">
-          Habla o toma una foto: la IA ordena tu negocio y arma tu historial
-          para pedir un crédito.
-        </h2>
-        <p className="muted">
-          Para bodegas, puestos de comida y negocios que hoy anotan en un
-          cuaderno o de memoria. Sin instalar nada y sin saber de contabilidad.
-        </p>
+      <div className="welcome-guide-top">
+        <div className="welcome-guide-heading">
+          <p className="eyebrow">PRUÉBALO EN 2 MINUTOS · DATOS DE EJEMPLO</p>
+          <h2 id="welcome-guide-title">
+            Habla o toma una foto: la IA ordena tu negocio y arma tu historial
+            para pedir un crédito.
+          </h2>
+          <p className="muted">
+            Para bodegas, puestos de comida y negocios que hoy anotan en un
+            cuaderno o de memoria. Sin instalar nada y sin saber de
+            contabilidad.
+          </p>
+        </div>
+        <button
+          type="button"
+          className="video-thumb"
+          onClick={() => setIsVideoOpen(true)}
+          aria-label="Ver el video de cómo usar la app (1 minuto)"
+        >
+          <Image
+            src="/video/guia-smart-solutions-poster.jpg"
+            alt=""
+            width={320}
+            height={180}
+          />
+          <span className="video-play" aria-hidden="true">
+            ▶
+          </span>
+          <span className="video-caption">Ver cómo funciona · 1 min</span>
+        </button>
       </div>
       <div className="guide-steps">
         {guideSteps.map((step) => (
@@ -104,6 +127,27 @@ export function WelcomeGuide() {
           Ocultar guía
         </button>
       </div>
+      {isVideoOpen && (
+        <Dialog
+          size="large"
+          title="Cómo usar Smart Solutions"
+          onClose={() => setIsVideoOpen(false)}
+        >
+          <video
+            className="guide-video"
+            src="/video/guia-smart-solutions.mp4"
+            poster="/video/guia-smart-solutions-poster.jpg"
+            controls
+            autoPlay
+            playsInline
+          >
+            Tu navegador no puede reproducir el video.
+          </video>
+          <p className="muted small">
+            Video de 1 minuto con capturas reales de la app (sin sonido).
+          </p>
+        </Dialog>
+      )}
     </section>
   );
 }

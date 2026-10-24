@@ -61,12 +61,22 @@ export const extractionSchema = z.object({
 });
 export const assistantReplySchema = z.object({
   answer: z.string().describe("Respuesta breve en español sencillo"),
+  followUps: z
+    .array(z.string())
+    .describe(
+      "2 o 3 preguntas cortas (máx. 7 palabras) que el usuario podría hacer después, en primera persona",
+    ),
 });
 export const voiceReplySchema = z.object({
   question: z
     .string()
     .describe("Transcripción literal de la pregunta del audio"),
   answer: z.string().describe("Respuesta breve en español sencillo"),
+  followUps: z
+    .array(z.string())
+    .describe(
+      "2 o 3 preguntas cortas (máx. 7 palabras) que el usuario podría hacer después, en primera persona",
+    ),
 });
 export const creditAdviceSchema = z.object({
   summary: z.string().describe("Dos oraciones sobre la situación del negocio"),

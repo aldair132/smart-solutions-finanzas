@@ -73,6 +73,7 @@ export async function POST(request: Request) {
         mode: "demo",
         question: input.question ?? "",
         answer: getDemoAssistantAnswer(),
+        followUps: [],
       });
     const system = input.spoken
       ? `${assistantSystemPrompt}
@@ -93,7 +94,11 @@ La pregunta del usuario está en el audio: transcríbela literalmente en questio
         schema: voiceReplySchema,
         audio: input.audio,
       });
-      return Response.json({ mode: "ai", ...reply });
+      return Response.json({
+        mode: "ai",
+        ...reply,
+        followUps: reply.followUps.slice(0, 3),
+      });
     }
     const reply = await generateStructured({
       system,
@@ -106,6 +111,7 @@ Pregunta: ${input.question}`,
       mode: "ai",
       question: input.question,
       answer: reply.answer,
+      followUps: reply.followUps.slice(0, 3),
     });
   } catch (failure) {
     console.error("Asistente IA fallido", failure);

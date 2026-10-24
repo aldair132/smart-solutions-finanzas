@@ -39,6 +39,7 @@ export const initialState: DemoState = {
       kind: "income",
       amountMinor: 9000,
       description: "Abarrotes",
+      category: "Ventas",
       occurredAt: "2026-10-23T10:30:00-05:00",
     },
     {
@@ -47,6 +48,7 @@ export const initialState: DemoState = {
       kind: "expense",
       amountMinor: 2000,
       description: "Bolsas",
+      category: "Insumos",
       occurredAt: "2026-10-23T09:45:00-05:00",
     },
     {
@@ -55,6 +57,7 @@ export const initialState: DemoState = {
       kind: "income",
       amountMinor: 4000,
       description: "Bebidas",
+      category: "Ventas",
       occurredAt: "2026-10-23T09:10:00-05:00",
     },
     {
@@ -63,6 +66,7 @@ export const initialState: DemoState = {
       kind: "expense",
       amountMinor: 1500,
       description: "Limpieza",
+      category: "Insumos",
       occurredAt: "2026-10-23T08:50:00-05:00",
     },
     {
@@ -71,6 +75,7 @@ export const initialState: DemoState = {
       kind: "income",
       amountMinor: 2000,
       description: "Pan",
+      category: "Ventas",
       occurredAt: "2026-10-23T08:15:00-05:00",
     },
     {
@@ -79,6 +84,7 @@ export const initialState: DemoState = {
       kind: "income",
       amountMinor: 25000,
       description: "Venta de almuerzos",
+      category: "Ventas",
       occurredAt: "2026-10-23T12:00:00-05:00",
     },
     {
@@ -87,6 +93,7 @@ export const initialState: DemoState = {
       kind: "expense",
       amountMinor: 10000,
       description: "Insumos",
+      category: "Insumos",
       occurredAt: "2026-10-23T07:30:00-05:00",
     },
     {
@@ -95,6 +102,7 @@ export const initialState: DemoState = {
       kind: "expense",
       amountMinor: 4000,
       description: "Transporte",
+      category: "Transporte",
       occurredAt: "2026-10-23T08:00:00-05:00",
     },
     ...createMovementHistory("2026-10-23"),

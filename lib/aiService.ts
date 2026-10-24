@@ -82,7 +82,12 @@ export async function askAssistant(input: {
   spoken: boolean;
   context: object;
   history: ChatTurn[];
-}): Promise<{ mode: AiMode; question: string; answer: string }> {
+}): Promise<{
+  mode: AiMode;
+  question: string;
+  answer: string;
+  followUps: string[];
+}> {
   // TODO(BACKEND): el contexto debería calcularse en servidor a partir de los movimientos autorizados, no enviarse desde el navegador.
   return postJson("/api/ai/assistant", {
     task: "chat",

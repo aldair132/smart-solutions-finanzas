@@ -2830,3 +2830,231 @@ dialog.dialog-large .photo-grid img {
   color: #9b2c2c;
   background: white;
 }
+.follow-ups {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+.follow-ups button {
+  padding: 6px 12px;
+  min-height: 34px;
+  border: 1px solid #b9d6c4;
+  border-radius: 30px;
+  background: white;
+  color: var(--green);
+  font-size: 13px;
+  font-weight: 700;
+  text-align: left;
+  transition: background 0.15s, border-color 0.15s;
+}
+.follow-ups button:hover:not(:disabled) {
+  background: var(--mint);
+  border-color: var(--green);
+}
+/* Pulido visual: entradas suaves, respuesta al tacto y avisos visibles */
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.space-card,
+.kpi,
+.analysis-card,
+.credit-grid > section,
+.draft-card,
+.receivable-row,
+.guide-step,
+.movement-row {
+  animation: rise-in 0.35s ease both;
+}
+.space-list > :nth-child(2),
+.kpi-grid > :nth-child(2),
+.guide-steps > :nth-child(2) {
+  animation-delay: 0.05s;
+}
+.space-list > :nth-child(3),
+.kpi-grid > :nth-child(3),
+.guide-steps > :nth-child(3) {
+  animation-delay: 0.1s;
+}
+.kpi-grid > :nth-child(n + 4) {
+  animation-delay: 0.15s;
+}
+.button,
+.capture-methods button,
+.kind-options .button,
+.guide-step,
+.example-chips button {
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    transform 0.1s ease;
+}
+.button:active:not(:disabled),
+.capture-methods button:active,
+.example-chips button:active,
+.follow-ups button:active {
+  transform: scale(0.97);
+}
+.button.primary:hover:not(:disabled) {
+  box-shadow: 0 6px 16px #16653433;
+}
+.kpi,
+.analysis-card,
+.movement-row,
+.receivable-link {
+  transition:
+    box-shadow 0.2s ease,
+    transform 0.2s ease,
+    border-color 0.2s ease;
+}
+.kpi:hover,
+.receivable-link:hover {
+  box-shadow: 0 8px 22px #173b2a10;
+  transform: translateY(-2px);
+}
+.guide-step:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 24px #0000002a;
+}
+.capture-methods button:hover > span {
+  transform: scale(1.06);
+}
+.capture-methods button > span {
+  transition:
+    background 0.15s ease,
+    transform 0.15s ease;
+}
+/* El texto de estado se muestra como aviso con ✓ cuando hay mensaje. */
+.status-message:not(:empty) {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 6px 0;
+  padding: 8px 14px;
+  border-radius: 30px;
+  background: #e3f4e8;
+  color: var(--green);
+  font-size: 13px;
+  font-weight: 700;
+  animation: toast-in 0.25s ease both;
+}
+.status-message:not(:empty)::before {
+  content: "✓";
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--green);
+  color: white;
+  font-size: 11px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .space-card,
+  .kpi,
+  .analysis-card,
+  .credit-grid > section,
+  .draft-card,
+  .receivable-row,
+  .guide-step,
+  .movement-row,
+  .status-message:not(:empty) {
+    animation: none;
+  }
+  .button,
+  .kpi,
+  .guide-step,
+  .receivable-link {
+    transition: none;
+    transform: none;
+  }
+}
+dialog.dialog-large .chat-log {
+  max-height: none;
+  min-height: 200px;
+}
+@media (max-width: 640px) {
+  dialog.dialog-large .chat-log {
+    max-height: calc(100dvh - 420px);
+  }
+}
+.welcome-guide-top {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 24px;
+  align-items: center;
+}
+.video-thumb {
+  position: relative;
+  display: block;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 2px solid #9fd8b4;
+  box-shadow: 0 10px 30px #0000003d;
+  transition: transform 0.2s ease;
+}
+.video-thumb:hover {
+  transform: scale(1.02);
+}
+.video-thumb img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.video-play {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  display: grid;
+  place-items: center;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: #e8a33d;
+  color: var(--ink);
+  font-size: 22px;
+  padding-left: 4px;
+  box-shadow: 0 6px 20px #00000040;
+}
+.video-caption {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 8px 12px;
+  background: linear-gradient(to top, #173b2ae6, transparent);
+  color: white;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: left;
+}
+.guide-video {
+  display: block;
+  width: 100%;
+  border-radius: 12px;
+  background: #000;
+  margin-bottom: 8px;
+}
+@media (max-width: 800px) {
+  .welcome-guide-top {
+    grid-template-columns: 1fr;
+  }
+}

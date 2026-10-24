@@ -26,7 +26,7 @@ Usar un nombre de proyecto neutro: la URL no debe incluir nombres de personas, u
 
 | Ruta | Función |
 | --- | --- |
-| `/` | Guía de bienvenida de 2 minutos (abre directamente la voz, la foto o el perfil) y resumen de espacios. |
+| `/` | Video guía de 1 minuto (`public/video/`), guía de bienvenida de 2 minutos (abre directamente la voz, la foto o el perfil) y resumen de espacios. |
 | `/espacios/[id]` | Registro por **Voz** (se graba el audio y Gemini lo transcribe y ordena en una sola llamada; funciona en cualquier navegador), **Foto** (hasta 6 boletas, tickets, capturas de Yape o páginas de cuaderno a la vez, leídas en una sola llamada; detecta comprobantes repetidos y guarda cada movimiento con la fecha de su boleta) o **Escribir**. La IA propone borradores editables; nada se guarda sin confirmar. |
 | `/espacios/[id]/movimientos` | Historial por periodo, edición y PDF. |
 | `/espacios/[id]/analisis` | Indicadores del mes (ventas vs. mes pasado, gastos, ganancia y margen, venta promedio, fiados), proyección de cierre de mes y de los próximos 30 días, gráficos de ventas y gastos por semana, gastos por categoría y venta promedio por día, con tabla de datos y conclusiones automáticas. |
@@ -54,6 +54,13 @@ Datos de ejemplo: 90 días de historial generados de forma determinista (`lib/mo
 - `lib/aiService.ts` — cliente de las rutas y compresión de fotos (máx. 1280 px).
 - `hooks/useAudioRecorder.ts` + `lib/audioEncoding.ts` — graba con MediaRecorder y convierte a WAV mono 16 kHz (máx. 60 s).
 - `hooks/useSpeechRecognition.ts` — dictado del navegador, solo como respaldo cuando el proveedor es Claude (no acepta audio).
+
+## Reportes PDF
+
+| Reporte | Dónde | Para quién | Contenido |
+| --- | --- | --- | --- |
+| Detalle de movimientos | Movimientos | El emprendedor (control interno) | Totales del periodo y cada registro con fecha, concepto, categoría, tipo e importe. |
+| Reporte para crédito | Crédito | La caja o cooperativa | Puntaje de preparación, 8 indicadores, gráfico de 3 meses, cálculo del puntaje, lectura de la IA y declaración para firmar. |
 
 ## Voz: costos y límites
 

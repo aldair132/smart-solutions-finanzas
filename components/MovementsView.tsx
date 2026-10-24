@@ -79,7 +79,7 @@ export function MovementsView({ spaceId }: { spaceId: string }) {
           disabled={exporting || !filtered.length}
         >
           <Icon name="download" />
-          {exporting ? "Generando…" : "Descargar informe PDF"}
+          {exporting ? "Generando…" : "Descargar detalle de movimientos (PDF)"}
         </button>
       </div>
       <p className="filter-caption">
