@@ -101,9 +101,20 @@ export function CreditView({ spaceId }: { spaceId: string }) {
     }
   }
   async function handleExport() {
+    // Pestaña abierta en el clic (antes de esperar) para que no la bloquee el navegador.
+    const previewWindow = window.open("", "_blank");
     setIsExporting(true);
     try {
-      await exportCreditPdf(currentSpace, profile, advice, receivableSummary);
+      await exportCreditPdf(
+        currentSpace,
+        profile,
+        advice,
+        receivableSummary,
+        previewWindow,
+      );
+    } catch {
+      previewWindow?.close();
+      setError("No pudimos generar el reporte. Intenta otra vez.");
     } finally {
       setIsExporting(false);
     }
@@ -273,16 +284,14 @@ export function CreditView({ spaceId }: { spaceId: string }) {
             onClick={handleExport}
             disabled={isExporting}
           >
-            <Icon name="download" />
-            {isExporting
-              ? "Generando PDF…"
-              : "Descargar reporte para crédito (PDF)"}
+            <Icon name="receipt" />
+            {isExporting ? "Generando PDF…" : "Ver reporte para crédito (PDF)"}
           </button>
           <p className="muted small">
             {/* TODO(BACKEND): compartir el reporte con una entidad requiere consentimiento explícito, firma y registro de acceso; hoy solo se descarga en el dispositivo. */}
             Resumen formal de 2 páginas para la caja o cooperativa: puntaje,
-            indicadores, gráfico y declaración para firmar. El detalle de
-            cada registro está en Movimientos. Se genera en tu dispositivo.
+            indicadores, gráfico y declaración para firmar. El detalle de cada
+            registro está en Movimientos. Se genera en tu dispositivo.
           </p>
         </section>
       </div>

@@ -81,6 +81,21 @@ export function drawSectionTitle(pdf: jsPDF, title: string, y: number) {
   pdf.line(pageMargin, y + 2, pageWidth - pageMargin, y + 2);
 }
 
+// Abre el PDF en una pestaña para leerlo sin descargar (el jurado no instala nada).
+// La pestaña se abre en el clic del usuario para que el navegador no la bloquee;
+// si aun así no existe, se descarga como respaldo.
+export async function showPdf(
+  pdf: jsPDF,
+  fileName: string,
+  previewWindow: Window | null,
+) {
+  if (previewWindow && !previewWindow.closed) {
+    previewWindow.location.href = String(pdf.output("bloburl"));
+    return;
+  }
+  await pdf.save(fileName, { returnPromise: true });
+}
+
 // Pie con número de página en todas las hojas; se llama al final.
 export function drawFooters(pdf: jsPDF, note: string) {
   const pageCount = pdf.getNumberOfPages();

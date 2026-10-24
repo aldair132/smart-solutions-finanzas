@@ -37,12 +37,15 @@ export function MovementsView({ spaceId }: { spaceId: string }) {
   ];
   async function downloadReport() {
     if (!space || exporting) return;
+    // Pestaña abierta en el clic (antes de esperar) para que no la bloquee el navegador.
+    const previewWindow = window.open("", "_blank");
     setExporting(true);
     setError("");
     try {
-      await exportMovementsPdf(space, filtered, period);
+      await exportMovementsPdf(space, filtered, period, previewWindow);
     } catch {
-      setError("No pudimos generar el informe. Intenta descargarlo otra vez.");
+      previewWindow?.close();
+      setError("No pudimos generar el informe. Intenta otra vez.");
     } finally {
       setExporting(false);
     }
@@ -78,8 +81,8 @@ export function MovementsView({ spaceId }: { spaceId: string }) {
           onClick={downloadReport}
           disabled={exporting || !filtered.length}
         >
-          <Icon name="download" />
-          {exporting ? "Generando…" : "Descargar detalle de movimientos (PDF)"}
+          <Icon name="receipt" />
+          {exporting ? "Generando…" : "Ver detalle de movimientos (PDF)"}
         </button>
       </div>
       <p className="filter-caption">

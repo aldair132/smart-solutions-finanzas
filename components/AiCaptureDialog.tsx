@@ -28,6 +28,11 @@ type CapturedImage = Awaited<ReturnType<typeof compressImage>> & {
   key: string;
 };
 const maxPhotos = 6;
+const sampleReceipts = [
+  { url: "/ejemplos/boleta-proveedor.jpg", name: "boleta-proveedor.jpg" },
+  { url: "/ejemplos/ticket-gas.jpg", name: "ticket-gas.jpg" },
+  { url: "/ejemplos/cuaderno-ventas.jpg", name: "cuaderno-ventas.jpg" },
+];
 type ExtractionRequest = Parameters<typeof extractMovementDrafts>[0];
 const voiceExamples = [
   "Vendí 3 menús a 12 soles y una gaseosa a 3",
@@ -85,7 +90,10 @@ export function AiCaptureDialog({
   const needsDefaultDate =
     method === "voice" || (drafts ?? []).some((draft) => !draft.date);
   const isDirty = Boolean(transcript || images.length || drafts);
-  async function compressFiles(fileList: FileList | null, limit: number) {
+  async function compressFiles(
+    fileList: FileList | File[] | null,
+    limit: number,
+  ) {
     const files = Array.from(fileList ?? []);
     if (files.length > limit)
       setError(
@@ -97,6 +105,24 @@ export function AiCaptureDialog({
         key: crypto.randomUUID(),
       })),
     );
+  }
+  // Comprobantes ficticios incluidos en la app: el jurado prueba sin tener fotos propias.
+  async function loadSampleReceipts() {
+    setError("");
+    try {
+      const files = await Promise.all(
+        sampleReceipts.map(async (sample) => {
+          const response = await fetch(sample.url);
+          return new File([await response.blob()], sample.name, {
+            type: "image/jpeg",
+          });
+        }),
+      );
+      const compressed = await compressFiles(files, maxPhotos);
+      setImages(compressed);
+    } catch {
+      setError("No pudimos cargar los ejemplos. Intenta otra vez.");
+    }
   }
   async function handleImages(fileList: FileList | null) {
     setError("");
@@ -423,6 +449,22 @@ export function AiCaptureDialog({
           <p className="muted">
             Boleta, factura, ticket o la página de tu cuaderno de cuentas.
           </p>
+          {!images.length && (
+            <button
+              type="button"
+              className="sample-button"
+              onClick={loadSampleReceipts}
+            >
+              <span aria-hidden="true">✨</span>
+              <span>
+                <strong>Probar con 3 boletas de ejemplo</strong>
+                <small>
+                  Boleta de proveedor, ticket de gas y una página de cuaderno.
+                  No necesitas tener fotos.
+                </small>
+              </span>
+            </button>
+          )}
           <div className="photo-pickers">
             <label className="photo-picker">
               <Icon name="camera" />

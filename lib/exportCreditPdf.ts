@@ -12,6 +12,7 @@ import {
   pageWidth,
   pdfColors,
   setText,
+  showPdf,
 } from "./pdfTheme";
 import type { ReceivableSummary } from "./receivables";
 import type { CreditAdvice, Space } from "./types";
@@ -196,6 +197,7 @@ export async function exportCreditPdf(
   profile: CreditProfile,
   advice: CreditAdvice | null,
   receivableSummary: ReceivableSummary,
+  previewWindow: Window | null = null,
 ) {
   const { jsPDF } = await import("jspdf");
   const pdf = new jsPDF();
@@ -276,7 +278,9 @@ export async function exportCreditPdf(
     pdf,
     "Información declarada por el emprendedor y registrada con apoyo de IA. No es una evaluación crediticia ni garantiza la aprobación. Datos de ejemplo en esta demostración.",
   );
-  await pdf.save(`reporte-credito-${space.id}-${demoDate}.pdf`, {
-    returnPromise: true,
-  });
+  await showPdf(
+    pdf,
+    `reporte-credito-${space.id}-${demoDate}.pdf`,
+    previewWindow,
+  );
 }

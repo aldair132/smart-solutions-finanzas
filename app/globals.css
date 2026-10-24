@@ -3058,3 +3058,35 @@ dialog.dialog-large .chat-log {
     grid-template-columns: 1fr;
   }
 }
+.sample-button {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 18px;
+  border-radius: 16px;
+  border: 2px solid #e8a33d;
+  background: #fff7e8;
+  text-align: left;
+  color: var(--ink);
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
+}
+.sample-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px #e8a33d33;
+}
+.sample-button > span:first-child {
+  font-size: 28px;
+}
+.sample-button > span:last-child {
+  display: grid;
+  gap: 2px;
+}
+.sample-button strong {
+  font-size: 16px;
+}
+.sample-button small {
+  font-size: 13px;
+  color: var(--muted);
+}

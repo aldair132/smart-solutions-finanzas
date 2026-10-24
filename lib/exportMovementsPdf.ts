@@ -3,6 +3,7 @@ import {
   contentWidth,
   drawFooters,
   drawHeader,
+  showPdf,
   drawStatBox,
   pageMargin,
   pdfColors,
@@ -148,11 +149,13 @@ export async function exportMovementsPdf(
   space: Space,
   movements: Movement[],
   period: Period,
+  previewWindow: Window | null = null,
 ) {
   const pdf = await createMovementsPdf(space, movements, period);
   const range = dateRange(period);
-  await pdf.save(
+  await showPdf(
+    pdf,
     `movimientos-${space.id}-${range.startAt.slice(0, 10)}-${range.endAt.slice(0, 10)}.pdf`,
-    { returnPromise: true },
+    previewWindow,
   );
 }
